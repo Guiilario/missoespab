@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read any profile (needed for ranking) but only write their own.
+    // totalXp / completedMissionsCount / streak fields should only ever be
+    // changed via the transactions in lib/firestore.js (completeMission,
+    // markDayCompleted) — consider locking those fields down further with
+    // Cloud Functions if you want to fully prevent client-side tampering.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // Missions are managed by an admin/CMS; all signed-in users can read them.
+    match /missions/{missionId} {
+      allow read: if request.auth != null;
+      allow write: if false; // write from CMS/admin SDK only
+    }
+
+    // Daily assignments are generated server-side (CMS/Cloud Function);
+    // each user can only read their own.
+    match /dailyAssignments/{assignmentId} {
+      allow read: if request.auth != null &&
+        assignmentId.matches(request.auth.uid + '_.*');
+      allow write: if false;
+    }
+
+    // Mission completions: a user can create their own completion record
+    // (id is uid_missionId_date so duplicates are naturally prevented),
+    // but never edit or delete one after the fact.
+    match /missionCompletions/{completionId} {
+      allow read: if request.auth != null &&
+        completionId.matches(request.auth.uid + '_.*');
+      allow create: if request.auth != null &&
+        completionId.matches(request.auth.uid + '_.*') &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

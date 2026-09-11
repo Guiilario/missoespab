@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0A33E1;
+  --color-brand-50: #EBEFFD;
+  --color-brand-100: #D7DFFB;
+  --color-brand-200: #AFC0F8;
+  --color-brand-300: #87A0F4;
+  --color-brand-400: #5F80F0;
+  --color-brand-500: #3760EA;
+  --color-brand-600: #0A33E1;
+  --color-brand-700: #0828B3;
+  --color-brand-800: #061E85;
+  --color-brand-900: #041457;
+
+  --color-ink: #0B0F19;
+  --color-paper: #FAFBFF;
+  --color-mint: #1FAE6B;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --shadow-soft: 0 1px 2px rgba(10,20,60,0.04), 0 8px 24px -8px rgba(10,51,225,0.12);
+  --shadow-card: 0 1px 3px rgba(10,20,60,0.06), 0 12px 32px -12px rgba(10,20,60,0.10);
+
+  --radius-xl2: 1.25rem;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background: #FAFBFF;
+  color: #0B0F19;
+  font-family: 'Inter', sans-serif;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+::selection {
+  background: #0A33E1;
+  color: white;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #0A33E1;
+  outline-offset: 2px;
+}
+
+@keyframes fillBar {
+  from { width: 0%; }
+}
+
+.xp-fill {
+  animation: fillBar 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.9) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.pop-in {
+  animation: popIn 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
