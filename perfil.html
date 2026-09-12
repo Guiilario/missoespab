@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A33E1" />
+  <title>Perfil — Missões</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-top"></div>
+
+  <main class="app-main">
+    <div class="card profile-card">
+      <div class="profile-avatar" id="profile-avatar">?</div>
+
+      <div id="profile-name-slot">
+        <h1 class="profile-name font-display" id="profile-name">Carregando...</h1>
+      </div>
+      <p class="profile-username" id="profile-username">@usuario</p>
+
+      <div class="profile-xp-block">
+        <div class="profile-xp-row">
+          <span class="lvl font-display" id="profile-level">Nível 01</span>
+          <span class="amount" id="profile-xp-amount">0/0 XP</span>
+        </div>
+        <div class="progress-track brand-track" style="margin-top: 0.375rem;">
+          <div class="progress-fill brand-fill" id="profile-progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="value font-display" id="stat-xp">0</p>
+        <p class="label">XP total</p>
+      </div>
+      <div class="stat-card">
+        <p class="value font-display" id="stat-missions">0</p>
+        <p class="label">Missões</p>
+      </div>
+      <div class="stat-card">
+        <p class="value font-display" id="stat-streak">0d</p>
+        <p class="label">Sequência</p>
+      </div>
+    </div>
+
+    <div class="card days-card">
+      <p class="label">Dias completados</p>
+      <p class="value font-display" id="stat-days">0</p>
+    </div>
+
+    <div class="profile-actions">
+      <button class="btn-secondary" id="edit-profile-btn">Editar perfil</button>
+
+      <button class="btn-secondary" id="change-pw-btn">Alterar senha</button>
+      <div class="password-box" id="password-box" hidden>
+        <input type="password" id="new-password" placeholder="Nova senha" />
+        <div class="password-box-actions">
+          <button class="confirm" id="confirm-pw-btn">Confirmar</button>
+          <button class="cancel" id="cancel-pw-btn">Cancelar</button>
+        </div>
+      </div>
+
+      <p class="profile-msg" id="profile-msg" hidden></p>
+
+      <button class="btn-danger" id="logout-btn">Sair</button>
+    </div>
+  </main>
+
+  <div id="nav-bottom"></div>
+
+  <script type="module" src="js/auth-guard.js"></script>
+  <script type="module" src="js/pages/profile.js"></script>
+</body>
+</html>

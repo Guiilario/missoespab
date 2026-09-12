@@ -1,13 +1,13 @@
-// One-off script to create example missions and today's assignment for a user.
-// Usage:
-//   1. npm install
-//   2. node scripts/seed-missions.mjs SEU_UID_AQUI
+// Script opcional para popular missões de exemplo — NÃO faz parte do app em si
+// (o app roda 100% sem Node/build, só HTML+JS). Este script usa Node só porque
+// é mais rápido que digitar documentos manualmente no Console do Firebase.
 //
-// This uses the same client-side Firebase SDK as the app (no service account
-// needed) — sign in isn't required because it writes to /missions and
-// /dailyAssignments directly; make sure your Firestore rules allow it while
-// seeding (e.g. temporarily relax the "write: if false" rules below, or run
-// this once from the Firebase console / Admin SDK instead for production).
+// Uso:
+//   npm install firebase   (só para este script, uma vez)
+//   node scripts/seed-missions.mjs SEU_UID_AQUI
+//
+// Alternativa sem Node nenhum: crie os documentos direto pelo Console do
+// Firebase (Firestore Database → Iniciar coleção), seguindo os campos abaixo.
 
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc } from "firebase/firestore";

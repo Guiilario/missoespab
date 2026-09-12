@@ -1,14 +1,55 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0A33E1" />
-    <title>Missões</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A33E1" />
+  <title>Hoje — Missões</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-top"></div>
+
+  <main class="app-main">
+    <div class="header-card">
+      <div class="header-top">
+        <div class="header-user">
+          <div class="header-avatar" id="header-avatar">?</div>
+          <div>
+            <p class="header-name font-display" id="header-name">Carregando...</p>
+            <p class="header-username" id="header-username">@usuario</p>
+          </div>
+        </div>
+        <div class="header-streak">🔥 <span id="header-streak">0</span> dias</div>
+      </div>
+
+      <div class="header-level-row">
+        <span class="header-level font-display" id="header-level">Nível 01</span>
+        <span class="header-xp-label" id="header-xp-label">0 / 0 XP</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="header-progress-fill" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <div class="card section-gap">
+      <div class="daily-progress-head">
+        <h2 class="font-display">Missões de hoje</h2>
+        <span id="daily-progress-label">0 de 3 concluídas</span>
+      </div>
+      <div class="daily-dots" id="daily-dots"></div>
+    </div>
+
+    <div id="celebration-slot"></div>
+
+    <div class="missions-list" id="missions-list">
+      <p class="missions-loading">Carregando missões...</p>
+    </div>
+  </main>
+
+  <div id="nav-bottom"></div>
+
+  <script type="module" src="js/auth-guard.js"></script>
+  <script type="module" src="js/pages/dashboard.js"></script>
+</body>
 </html>

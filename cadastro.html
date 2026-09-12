@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A33E1" />
+  <title>Criar conta — Missões</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="auth-screen">
+    <div class="auth-box">
+      <div class="auth-header">
+        <div class="auth-logo font-display">M</div>
+        <h1 class="font-display">Criar conta</h1>
+        <p>Comece a cumprir missões hoje.</p>
+      </div>
+
+      <form id="register-form">
+        <div class="field">
+          <label for="name">Nome</label>
+          <input type="text" id="name" required autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="username">Usuário</label>
+          <input type="text" id="username" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" required autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="password">Senha</label>
+          <input type="password" id="password" required autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label for="confirm">Confirmar senha</label>
+          <input type="password" id="confirm" required autocomplete="new-password" />
+        </div>
+
+        <p class="form-error" id="error-msg" hidden></p>
+
+        <button type="submit" class="btn-primary" id="submit-btn">Criar conta</button>
+      </form>
+
+      <p class="auth-footnote">
+        Já tem uma conta? <a href="entrar.html">Entrar</a>
+      </p>
+    </div>
+  </div>
+
+  <script type="module" src="js/pages/register.js"></script>
+</body>
+</html>
