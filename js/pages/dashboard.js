@@ -53,7 +53,7 @@ window.addEventListener("auth-ready", async (e) => {
     // missões do admin (dentro de onAssignmentChange), pra não marcar o dia
     // como concluído baseado só na missão permanente antes da hora.
 
-    subscribeToDailyAssignment(user.uid, onAssignmentChange);
+    subscribeToDailyAssignment(onAssignmentChange);
 
     // Detecta em tempo real quando alguém se cadastra pelo link deste
     // usuário hoje, e completa a missão permanente automaticamente.

@@ -1,10 +1,12 @@
 # Missões — HTML + CSS + JavaScript puro
 
-Mesma plataforma de comunidade gamificada (login, XP, níveis, missões diárias,
-ranking), agora **sem React, sem build, sem npm** para rodar o app. Só HTML,
-CSS e JavaScript (ES Modules), com Firebase carregado direto do CDN. Feito
-**mobile-first**: layout, tamanhos de toque e tipografia priorizam a tela de
-celular, com o desktop como um aprimoramento (nav superior, larguras maiores).
+Plataforma de comunidade gamificada (login, XP, níveis, missões diárias,
+ranking) com um **painel de administrador** para criar/desativar usuários e
+gerenciar a missão do dia. Tudo em **sem React, sem build, sem npm** para
+rodar o app — só HTML, CSS e JavaScript (ES Modules), com Firebase carregado
+direto do CDN. Feito **mobile-first**: layout, tamanhos de toque e tipografia
+priorizam a tela de celular, com o desktop como um aprimoramento (nav
+superior, larguras maiores).
 
 ## Como rodar
 
@@ -28,51 +30,114 @@ Para publicar de verdade, qualquer hospedagem de arquivo estático serve:
 Firebase Hosting, Netlify, Vercel, GitHub Pages, etc. — é só subir a pasta
 inteira.
 
+⚠️ **Se você usar GitHub Pages** (ou qualquer domínio que não seja
+`localhost` / `*.firebaseapp.com` / `*.web.app`), tem um passo extra
+obrigatório: adicionar esse domínio em **Firebase Console → Authentication →
+Settings → Authorized domains**. Sem isso, o login falha silenciosamente.
+
 ## Estrutura
 
 ```
-entrar.html          tela de login
-index.html            dashboard "Hoje" (protegida)
-ranking.html           ranking (protegida)
-perfil.html            perfil (protegida)
-assets/avatar-default.svg  ícone padrão usado para todos os usuários (substitua por este mesmo caminho quando tiver o ícone final)
-css/style.css          todo o visual (tokens de cor, tipografia, componentes)
-js/firebase.js         inicialização do Firebase (config do projeto appmissoespab)
-js/xp.js                cálculo de nível/XP
-js/firestore.js         acesso a dados (perfil, missões, ranking, conclusão atômica)
-js/auth-guard.js        protege páginas: redireciona pra entrar.html se não logado
-js/nav.js               monta a navegação (topo no desktop, embaixo no celular)
-js/mission-card.js       gera o HTML de cada card de missão
-js/pages/*.js            lógica específica de cada tela
+entrar.html                tela de login
+index.html                  dashboard "Hoje" (protegida)
+ranking.html                 ranking (protegida)
+perfil.html                  perfil (protegida)
+admin.html                   painel administrativo (protegida, só p/ admins)
+convite.html                 cadastro público de voluntário (sem login)
+assets/avatar-default.svg    ícone padrão usado para todos os usuários
+css/style.css                todo o visual (tokens de cor, tipografia, componentes)
+js/firebase.js               inicialização do Firebase + truque de criar usuário sem deslogar o admin
+js/xp.js                      cálculo de nível/XP
+js/firestore.js               acesso a dados (perfil, missões, ranking, admin, convites)
+js/auth-guard.js              protege páginas: redireciona se não logado ou se a conta foi desativada
+js/nav.js                     monta a navegação (topo no desktop, embaixo no celular)
+js/mission-card.js            gera o HTML de cada card de missão
+js/pages/*.js                 lógica específica de cada tela
 ```
 
 Não tem bundler, TypeScript nem framework — cada página HTML carrega seu
 próprio script como módulo nativo do navegador, que importa só o que precisa
 dos outros arquivos `.js`.
 
-## Missões do dia
+## Antes de usar
+
+1. **Ative o Authentication por E-mail/Senha** no Firebase Console do projeto
+   `appmissoespab` (Authentication → Sign-in method → Email/Password).
+2. **Crie o Firestore** (modo produção) se ainda não existir.
+3. **Publique as regras de segurança** de `firestore.rules` — copie e cole o
+   conteúdo do arquivo direto no Console → Firestore Database → Rules →
+   Publish (ou `firebase deploy --only firestore:rules` se usar o CLI).
+4. **Crie o primeiro administrador (passo único, manual):**
+   - Crie sua própria conta em Authentication → Add user.
+   - Copie o UID gerado.
+   - Em Firestore Database → Data, crie a coleção `admins` (se não existir) e
+     dentro dela um documento cujo **ID seja exatamente esse UID** (o
+     conteúdo do documento pode ficar vazio, ou um campo qualquer tipo
+     `role: "admin"` — só a existência do documento importa).
+   - Crie também o documento de perfil em `users/{uid}` com os campos `name`,
+     `username`, `email`, `totalXp: 0`, `completedMissionsCount: 0`,
+     `currentStreak: 0`, `daysCompleted: 0`, `lastCompletedDay: null`,
+     `disabled: false`.
+   - Esse é o **único** usuário que você precisa criar manualmente pelo
+     Console — todos os outros, você cria direto pelo painel `/admin.html`
+     depois de logar com essa conta.
+
+Depois desse setup único, tudo mais é feito logado como admin, pela própria
+interface.
+
+## Painel administrativo (`admin.html`)
+
+Só aparece/funciona pra quem tem o documento em `admins/{uid}` (ver acima).
+Um usuário comum que tentar acessar a URL diretamente é redirecionado de
+volta pra tela Hoje. Se você estiver logado como admin, aparece um botão
+"Painel administrativo" na tela de Perfil.
+
+O painel tem três blocos:
+
+- **Criar usuário** — nome, usuário, e-mail e senha; cria a conta de login
+  (Firebase Authentication) *e* o documento de perfil no Firestore em um só
+  clique. Por trás dos panos, isso usa uma segunda instância do Firebase só
+  pra criar a conta, então o admin continua logado normalmente durante o
+  processo (não é deslogado nem trocado de usuário).
+- **Usuários** — lista todo mundo, com um botão Desativar/Reativar por
+  pessoa. **Importante:** como o app roda inteiro no navegador (sem
+  servidor), não é possível apagar de verdade o login de alguém no Firebase
+  Authentication só pelo painel — isso exigiria Admin SDK/Cloud Functions.
+  "Desativar" marca `disabled: true` no perfil da pessoa: na próxima vez
+  (ou imediatamente, se ela estiver com o app aberto) que ela tentar acessar
+  qualquer tela, o app barra e desloga ela na hora, e ela some do ranking. O
+  login técnico dela continua existindo no Firebase até você mesmo apagar
+  pelo Console (Authentication → Users → excluir), se quiser fazer isso
+  também.
+- **Missão do dia** — escolha uma data (padrão: hoje) e:
+  - atribua uma missão já existente do catálogo (dropdown), ou
+  - crie uma missão nova (título, descrição, XP, dificuldade) que já fica
+    salva no catálogo e atribuída àquela data.
+  Embaixo aparece a lista do que já está atribuído pra data escolhida, com
+  botão de remover. **A missão do dia agora é global** — uma vez atribuída,
+  vale pra todos os usuários que logarem naquela data (não é mais por
+  pessoa).
+
+## Missões do dia (visão do usuário)
 
 Todo usuário vê, todo dia:
 
-- **Missão permanente** — "Convide um amigo" (`convide-um-amigo`), fixa no código
-  em `js/pages/dashboard.js` (constante `PERMANENT_MISSION`). Vale 200 XP por
-  padrão — mude o `xpReward` ali se quiser outro valor. Diferente das outras
-  missões, ela **não** completa com um clique: o botão copia (ou abre o menu
-  de compartilhar) um link único do tipo `convite.html?u=SEU_UID`. A missão só
-  é marcada como concluída quando **a própria pessoa convidada** abre esse
-  link e preenche o formulário de "Seja voluntário" com o nome dela (e
-  WhatsApp, se quiser) — é ela quem digita os próprios dados, com consentimento
-  próprio, não o usuário reportando dado de terceiro.
+- **Missão permanente** — "Convide um amigo" (`convide-um-amigo`), fixa no
+  código em `js/pages/dashboard.js` (constante `PERMANENT_MISSION`). Vale 200
+  XP por padrão — mude o `xpReward` ali se quiser outro valor. Diferente das
+  outras missões, ela **não** completa com um clique: o botão copia (ou abre
+  o menu de compartilhar) um link único do tipo `convite.html?u=SEU_UID`. A
+  missão só é marcada como concluída quando **a própria pessoa convidada**
+  abre esse link e preenche o formulário de "Seja voluntário" com o nome dela
+  (e WhatsApp, se quiser) — é ela quem digita os próprios dados, com
+  consentimento próprio, não o usuário reportando dado de terceiro.
   - A cada voluntário cadastrado, o registro fica salvo na coleção
     `volunteers` do Firestore, vinculado ao `inviterUid` de quem convidou.
-  - O usuário vê a lista de quem ele já indicou na tela **Perfil** ("Voluntários
-    que você indicou").
-- **Missões extras do dia** — vêm do Firestore (`dailyAssignments` +
-  `missions`), pensadas pra serem geradas por um CMS de administrador que
-  ainda vamos construir. Enquanto o CMS não existe, você pode popular esses
-  documentos manualmente pelo Console do Firebase ou com o script
-  `scripts/seed-missions.mjs`. Se não houver nenhuma, o usuário só vê a
-  missão permanente.
+  - O usuário vê a lista de quem ele já indicou na tela **Perfil**
+    ("Voluntários que você indicou").
+- **Missões do dia adicionadas pelo admin** — vêm do painel `/admin.html`
+  (ver acima). Se o admin não tiver adicionado nenhuma pra hoje, o usuário só
+  vê a missão permanente — o app não quebra.
 
 A contagem "X de Y concluídas" e a barra de progresso do dia já somam a
 missão permanente + o que o admin adicionar.
@@ -89,60 +154,30 @@ com tamanho máximo), mas não impedem alguém de enviar várias vezes. Se isso
 virar problema na prática, dá pra adicionar Firebase App Check ou um captcha
 nessa página depois.
 
-## Antes de usar
-
-1. **Ative o Authentication por E-mail/Senha** no Firebase Console do projeto
-   `appmissoespab` (Authentication → Sign-in method → Email/Password).
-2. **Crie o Firestore** (modo produção) se ainda não existir.
-3. **Publique as regras de segurança** de `firestore.rules`:
-   ```bash
-   firebase deploy --only firestore:rules
-   ```
-   (ou cole o conteúdo do arquivo direto no Console → Firestore → Regras).
-4. **Crie as contas dos usuários manualmente** — não existe mais tela de
-   cadastro no app; toda conta é criada pelo administrador:
-   - No Console do Firebase → Authentication → Add user, crie o e-mail/senha.
-   - Copie o UID gerado e crie o documento correspondente em
-     `users/{uid}` no Firestore com os campos `name`, `username`, `email`,
-     `totalXp: 0`, `completedMissionsCount: 0`, `currentStreak: 0`,
-     `daysCompleted: 0`, `lastCompletedDay: null` (veja
-     `createUserProfile` em `js/firestore.js` para o formato exato).
-   - Passe e-mail e senha para o usuário; ele só usa a tela `entrar.html`
-     (login). Não existe tela de "esqueci minha senha" — se um usuário
-     esquecer a senha, ele fala direto com você (o administrador) pra
-     redefinir (pelo Console do Firebase → Authentication → esse usuário →
-     Reset password, ou apagando/recriando a senha).
-5. **Crie missões de teste** para ver o fluxo "Hoje" funcionando. Duas formas:
-   - Direto no Console do Firebase, criando os documentos manualmente conforme
-     a estrutura de dados abaixo; ou
-   - Rodando o script opcional `scripts/seed-missions.mjs` (esse sim precisa
-     de Node + `npm install firebase`, mas é só uma ferramenta de apoio —
-     não faz parte do app):
-     ```bash
-     npm install firebase
-     node scripts/seed-missions.mjs SEU_UID_DE_TESTE
-     ```
-     O UID aparece em Authentication → Users depois de criar uma conta pela
-     tela de cadastro. As regras atuais bloqueiam escrita direta em
-     `missions`/`dailyAssignments` pelo cliente — relaxe temporariamente essas
-     regras pra rodar o seed, ou use o Admin SDK/Console em produção.
-
 ## Estrutura de dados (Firestore)
 
-- `users/{uid}` — perfil, `totalXp`, `currentStreak`, `daysCompleted`, etc.
+- `admins/{uid}` — existência do documento = a pessoa é admin. Sem campos
+  obrigatórios. Só criável manualmente pelo Console (ver setup acima).
+- `users/{uid}` — perfil (`name`, `username`, `email`, `disabled`), `totalXp`,
+  `currentStreak`, `daysCompleted`, etc.
 - `missions/{missionId}` — catálogo de missões (`title`, `description`,
-  `xpReward`, `difficulty`, `imageUrl`).
-- `dailyAssignments/{uid}_{YYYY-MM-DD}` — as 3 missões do dia de cada usuário
-  (`missionIds: [...]`).
-- `missionCompletions/{uid}_{missionId}_{YYYY-MM-DD}` — registro de conclusão;
-  o id determinístico evita XP duplicado mesmo com cliques repetidos ou
-  reconexões (a transação em `js/firestore.js` garante atomicidade).
+  `xpReward`, `difficulty`, `imageUrl`), escrito só pelo admin.
+- `dailyAssignments/{YYYY-MM-DD}` — as missões atribuídas pra uma data,
+  **globais pra todos os usuários** (`missionIds: [...]`), escrito só pelo
+  admin.
+- `missionCompletions/{uid}_{missionId}_{YYYY-MM-DD}` — registro de
+  conclusão; o id determinístico evita XP duplicado mesmo com cliques
+  repetidos ou reconexões (a transação em `js/firestore.js` garante
+  atomicidade).
+- `volunteers/{autoId}` — voluntários cadastrados via `convite.html`, com
+  `inviterUid` apontando pra quem convidou.
 
 ## Sobre as imagens
 
 O campo `imageUrl` de cada missão já está pronto pra receber uma URL do
-Pexels (ou de qualquer fonte) — a busca/seleção de imagem em si fica pro CMS,
-fora do escopo desta área do usuário.
+Pexels (ou de qualquer fonte) — a busca/seleção de imagem em si ainda não tem
+UI no painel admin (as missões criadas por lá saem com `imageUrl: ""`), mas o
+dado já existe no banco pra quando essa parte for construída.
 
 ## Sobre o ícone de perfil
 
@@ -156,9 +191,10 @@ e `js/pages/ranking.js`) se trocar o formato do arquivo.
 ## Sobre as contas
 
 Não existe autocadastro nem edição de perfil/senha pelo usuário: a tela de
-perfil só mostra dados e o botão "Sair". Toda conta é criada pelo
-administrador (ver passo 4 acima) e entregue pronta ao usuário — ele só faz
-login. Se esquecer a senha, o contato é direto com o administrador.
+perfil só mostra dados e o botão "Sair". Toda conta é criada pelo admin, pelo
+painel `/admin.html` — ele só faz login. Se esquecer a senha, o contato é
+direto com o administrador (Console → Authentication → esse usuário → Reset
+password).
 
 ## Responsividade
 
@@ -170,3 +206,10 @@ login. Se esquecer a senha, o contato é direto com o administrador.
 - Botões e itens de navegação têm altura mínima de toque de 44–48px.
 - Um ajuste extra em `max-width: 380px` reduz paddings para telas bem
   estreitas (ex: iPhone SE).
+
+## Script de seed (opcional, legado)
+
+`scripts/seed-missions.mjs` continua funcionando (atualizado pro esquema
+global de `dailyAssignments`), mas hoje o jeito normal de criar missões é
+pelo painel `/admin.html`. O script só é útil se você quiser popular dados de
+teste via terminal sem abrir o navegador.

@@ -1,5 +1,9 @@
 import { auth, signInWithEmailAndPassword } from "../firebase.js";
 
+if (new URLSearchParams(window.location.search).get("desativado")) {
+  document.getElementById("deactivated-msg").hidden = false;
+}
+
 const form = document.getElementById("login-form");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");

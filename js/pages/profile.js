@@ -1,6 +1,6 @@
 import { renderNav } from "../nav.js";
 import { getLevelProgress } from "../xp.js";
-import { subscribeToAllReferrals } from "../firestore.js";
+import { subscribeToAllReferrals, checkIsAdmin } from "../firestore.js";
 import { auth, signOut } from "../firebase.js";
 
 renderNav("perfil");
@@ -14,6 +14,12 @@ window.addEventListener("auth-ready", (e) => {
   if (!referralsSubscribed) {
     referralsSubscribed = true;
     subscribeToAllReferrals(e.detail.user.uid, renderReferrals);
+    checkIsAdmin(e.detail.user.uid).then((isAdmin) => {
+      if (isAdmin) {
+        document.getElementById("admin-link-slot").innerHTML =
+          `<a href="admin.html" class="btn-secondary" style="display:block;text-align:center;">Painel administrativo</a>`;
+      }
+    });
   }
 });
 

@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   runTransaction,
   collection,
   query,
@@ -14,6 +15,8 @@ import {
   onSnapshot,
   serverTimestamp,
   increment,
+  arrayUnion,
+  arrayRemove,
 } from "./firebase.js";
 
 /** Retorna a data atual como YYYY-MM-DD, usada como chave da missão diária. */
@@ -30,6 +33,7 @@ export async function createUserProfile(uid, { name, username, email }) {
     name,
     username,
     email,
+    disabled: false,
     totalXp: 0,
     completedMissionsCount: 0,
     currentStreak: 0,
@@ -51,16 +55,42 @@ export async function updateUserProfile(uid, data) {
   await updateDoc(ref, data);
 }
 
+/** Lista todos os usuários (uso do painel admin). */
+export function subscribeToAllUsers(callback) {
+  const q = query(collection(db, "users"), orderBy("name"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/** Ativa/desativa o acesso de um usuário ao app (uso do painel admin). */
+export async function setUserDisabled(uid, disabled) {
+  await updateDoc(doc(db, "users", uid), { disabled });
+}
+
+// ---------- ADMIN ----------
+
+export async function checkIsAdmin(uid) {
+  const snap = await getDoc(doc(db, "admins", uid));
+  return snap.exists();
+}
+
 // ---------- MISSÕES DIÁRIAS ----------
+// A missão do dia é global: um único documento por data, valendo pra todos
+// os usuários (não é mais por usuário). O admin escolhe as missões do
+// catálogo e atribui a uma data pelo painel /admin.html.
 
 /**
- * Assina as 3 missões atribuídas para hoje.
- * dailyAssignments/{uid}_{todayKey} -> { uid, date, missionIds: [...] }
+ * Assina as missões atribuídas para HOJE (globais, pra todo mundo).
+ * dailyAssignments/{YYYY-MM-DD} -> { missionIds: [...] }
  * missions/{missionId} -> { title, description, xpReward, difficulty, imageUrl }
  */
-export function subscribeToDailyAssignment(uid, callback) {
-  const id = `${uid}_${todayKey()}`;
-  const ref = doc(db, "dailyAssignments", id);
+export function subscribeToDailyAssignment(callback) {
+  return subscribeToAssignmentForDate(todayKey(), callback);
+}
+
+export function subscribeToAssignmentForDate(date, callback) {
+  const ref = doc(db, "dailyAssignments", date);
   return onSnapshot(ref, (snap) => {
     callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
   });
@@ -71,6 +101,43 @@ export function subscribeToMission(missionId, callback) {
   return onSnapshot(ref, (snap) => {
     callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
   });
+}
+
+/** Lista o catálogo inteiro de missões já criadas (uso do painel admin). */
+export function subscribeToAllMissions(callback) {
+  const q = query(collection(db, "missions"), orderBy("title"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/** Cria uma missão nova no catálogo (uso do painel admin). Retorna o id. */
+export async function createMission({ title, description, xpReward, difficulty }) {
+  const ref = await addDoc(collection(db, "missions"), {
+    title,
+    description,
+    xpReward: Number(xpReward),
+    difficulty,
+    imageUrl: "",
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+/** Atribui uma missão (já existente) a uma data — some pra todos os usuários. */
+export async function assignMissionToDate(missionId, date) {
+  const ref = doc(db, "dailyAssignments", date);
+  await setDoc(
+    ref,
+    { date, missionIds: arrayUnion(missionId) },
+    { merge: true }
+  );
+}
+
+/** Remove uma missão da atribuição de uma data. */
+export async function removeMissionFromDate(missionId, date) {
+  const ref = doc(db, "dailyAssignments", date);
+  await updateDoc(ref, { missionIds: arrayRemove(missionId) });
 }
 
 /**
@@ -117,7 +184,7 @@ export async function getCompletionsForToday(uid, missionIds) {
 }
 
 /**
- * Marca o dia como concluído (3 missões feitas) e atualiza a sequência.
+ * Marca o dia como concluído (todas as missões feitas) e atualiza a sequência.
  * Idempotente: só avança a sequência uma vez por dia.
  */
 export async function markDayCompleted(uid) {

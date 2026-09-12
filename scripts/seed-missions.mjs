@@ -1,13 +1,14 @@
 // Script opcional para popular missões de exemplo — NÃO faz parte do app em si
-// (o app roda 100% sem Node/build, só HTML+JS). Este script usa Node só porque
-// é mais rápido que digitar documentos manualmente no Console do Firebase.
+// (o app roda 100% sem Node/build, só HTML+JS). Hoje em dia o jeito normal de
+// criar missões é pelo painel /admin.html — este script só é útil pra testar
+// rapidinho sem entrar no painel.
 //
 // Uso:
 //   npm install firebase   (só para este script, uma vez)
-//   node scripts/seed-missions.mjs SEU_UID_AQUI
+//   node scripts/seed-missions.mjs
 //
-// Alternativa sem Node nenhum: crie os documentos direto pelo Console do
-// Firebase (Firestore Database → Iniciar coleção), seguindo os campos abaixo.
+// Alternativa sem Node nenhum: use o painel /admin.html (recomendado), ou
+// crie os documentos direto pelo Console do Firebase.
 
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
@@ -24,12 +25,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const uid = process.argv[2];
-if (!uid) {
-  console.error("Uso: node scripts/seed-missions.mjs SEU_UID_AQUI");
-  process.exit(1);
-}
-
 const today = new Date().toISOString().slice(0, 10);
 
 const missions = [
@@ -43,14 +38,6 @@ const missions = [
   },
   {
     id: "m2",
-    title: "Convide um amigo",
-    description: "Compartilhe o app com alguém da sua comunidade.",
-    xpReward: 250,
-    difficulty: "medium",
-    imageUrl: "",
-  },
-  {
-    id: "m3",
     title: "Participe de uma atividade",
     description: "Registre sua participação em uma atividade da comunidade.",
     xpReward: 300,
@@ -65,12 +52,13 @@ async function run() {
     console.log(`Missão criada: ${m.id}`);
   }
 
-  await setDoc(doc(db, "dailyAssignments", `${uid}_${today}`), {
-    uid,
+  // dailyAssignments agora é GLOBAL por data (não por usuário) — vale pra
+  // todo mundo que logar hoje.
+  await setDoc(doc(db, "dailyAssignments", today), {
     date: today,
     missionIds: missions.map((m) => m.id),
   });
-  console.log(`Atribuição de hoje criada para ${uid}`);
+  console.log(`Missões de hoje (${today}) atribuídas pra todo mundo.`);
 }
 
 run()
