@@ -3,6 +3,7 @@ import { getLevelProgress } from "../xp.js";
 import {
   subscribeToDailyAssignment,
   subscribeToMission,
+  subscribeToTodayReferrals,
   completeMission,
   markDayCompleted,
   getCompletionsForToday,
@@ -11,12 +12,25 @@ import { missionCardHtml } from "../mission-card.js";
 
 renderNav("hoje");
 
+// Missão fixa, presente todo dia pra todo usuário. Ela só é concluída quando
+// alguém se cadastra de verdade pelo link de convite deste usuário (ver
+// convite.html) — não é honor system como as outras, porque depende de uma
+// ação real de outra pessoa. As demais missões do dia vêm do CMS do
+// administrador (via dailyAssignments/missions no Firestore).
+const PERMANENT_MISSION = {
+  id: "convide-um-amigo",
+  title: "Convide um amigo",
+  description:
+    "Envie seu link de convite. A missão completa quando alguém preencher o formulário de inscrição como voluntário.",
+  xpReward: 200,
+  difficulty: "easy",
+};
+
 let currentUser = null;
-let assignment = undefined; // undefined = carregando, null = nenhuma
-let missions = {}; // { missionId: missionData }
-let completions = {}; // { missionId: bool }
+let assignment = undefined; // undefined = carregando, null = nenhuma missão do admin ainda
+let adminMissions = {}; // { missionId: missionData }
+let completions = {}; // { missionId: bool }, inclui a missão permanente
 let missionUnsubs = [];
-let assignmentUnsub = null;
 let busyMissionId = null;
 let dayJustCelebrated = false;
 
@@ -24,14 +38,33 @@ const missionsListEl = document.getElementById("missions-list");
 const dailyDotsEl = document.getElementById("daily-dots");
 const dailyProgressLabelEl = document.getElementById("daily-progress-label");
 const celebrationSlot = document.getElementById("celebration-slot");
+const toastEl = document.getElementById("mission-toast");
 
-window.addEventListener("auth-ready", (e) => {
+window.addEventListener("auth-ready", async (e) => {
   const { user, profile } = e.detail;
   const isFirstLoad = !currentUser;
   currentUser = user;
 
   if (isFirstLoad) {
-    assignmentUnsub = subscribeToDailyAssignment(user.uid, onAssignmentChange);
+    const permanentStatus = await getCompletionsForToday(user.uid, [PERMANENT_MISSION.id]);
+    completions = { ...completions, ...permanentStatus };
+    renderMissionsList();
+    // maybeCompleteDay() só roda depois que soubermos o estado real das
+    // missões do admin (dentro de onAssignmentChange), pra não marcar o dia
+    // como concluído baseado só na missão permanente antes da hora.
+
+    subscribeToDailyAssignment(user.uid, onAssignmentChange);
+
+    // Detecta em tempo real quando alguém se cadastra pelo link deste
+    // usuário hoje, e completa a missão permanente automaticamente.
+    subscribeToTodayReferrals(user.uid, async (referrals) => {
+      if (referrals.length > 0 && !completions[PERMANENT_MISSION.id]) {
+        await completeMission(user.uid, PERMANENT_MISSION.id, PERMANENT_MISSION.xpReward);
+        completions[PERMANENT_MISSION.id] = true;
+        renderMissionsList();
+        maybeCompleteDay();
+      }
+    });
   }
 
   renderHeader(profile);
@@ -41,9 +74,6 @@ function renderHeader(profile) {
   if (!profile) return;
   const levelInfo = getLevelProgress(profile.totalXp || 0);
 
-  document.getElementById("header-avatar").textContent = (profile.name || "?")
-    .charAt(0)
-    .toUpperCase();
   document.getElementById("header-name").textContent = profile.name || "";
   document.getElementById("header-username").textContent = `@${profile.username || ""}`;
   document.getElementById("header-streak").textContent = profile.currentStreak || 0;
@@ -61,66 +91,84 @@ function renderHeader(profile) {
 async function onAssignmentChange(newAssignment) {
   assignment = newAssignment;
 
-  // Cancela assinaturas de missões antigas
   missionUnsubs.forEach((u) => u());
   missionUnsubs = [];
-  missions = {};
+  adminMissions = {};
 
   renderMissionsList();
 
-  if (!assignment?.missionIds?.length) return;
+  if (!assignment?.missionIds?.length) {
+    // Sem missões do admin ainda hoje — a permanente sozinha já pode
+    // completar o dia.
+    maybeCompleteDay();
+    return;
+  }
 
-  completions = await getCompletionsForToday(currentUser.uid, assignment.missionIds);
+  const adminStatus = await getCompletionsForToday(currentUser.uid, assignment.missionIds);
+  completions = { ...completions, ...adminStatus };
   renderMissionsList();
   maybeCompleteDay();
 
   assignment.missionIds.forEach((id) => {
     const unsub = subscribeToMission(id, (mission) => {
-      missions[id] = mission;
+      adminMissions[id] = mission;
       renderMissionsList();
     });
     missionUnsubs.push(unsub);
   });
 }
 
+function allMissionIds() {
+  return [PERMANENT_MISSION.id, ...(assignment?.missionIds || [])];
+}
+
 function renderMissionsList() {
-  if (assignment === undefined) {
-    missionsListEl.innerHTML = `<p class="missions-loading">Carregando missões...</p>`;
-    return;
-  }
-  if (assignment === null || !assignment.missionIds?.length) {
-    missionsListEl.innerHTML = `<p class="missions-empty">Nenhuma missão disponível para hoje ainda. Volte em breve.</p>`;
-    return;
-  }
+  const ids = allMissionIds();
+  const completedCount = ids.filter((id) => completions[id]).length;
 
-  const missionIds = assignment.missionIds;
-  const completedCount = missionIds.filter((id) => completions[id]).length;
-
-  dailyProgressLabelEl.textContent = `${completedCount} de ${missionIds.length} concluídas`;
-  dailyDotsEl.innerHTML = missionIds
+  dailyProgressLabelEl.textContent = `${completedCount} de ${ids.length} concluídas`;
+  dailyDotsEl.innerHTML = ids
     .map((_, i) => `<span class="daily-dot ${i < completedCount ? "filled" : ""}"></span>`)
     .join("");
 
-  const cardsHtml = missionIds
-    .map((id, i) => {
-      const mission = missions[id];
-      if (!mission) return "";
-      const status = completions[id] ? "completed" : "available";
-      return missionCardHtml({ index: i, mission, status, busy: busyMissionId === id });
-    })
-    .join("");
+  const permanentCardHtml = missionCardHtml({
+    index: 0,
+    mission: PERMANENT_MISSION,
+    status: completions[PERMANENT_MISSION.id] ? "completed" : "available",
+    busy: busyMissionId === PERMANENT_MISSION.id,
+    actionLabel: "Copiar link de convite",
+  });
 
-  missionsListEl.innerHTML =
-    cardsHtml || `<p class="missions-loading">Carregando missões...</p>`;
+  let adminCardsHtml = "";
+  if (assignment?.missionIds?.length) {
+    adminCardsHtml = assignment.missionIds
+      .map((id, i) => {
+        const mission = adminMissions[id];
+        if (!mission) return "";
+        const status = completions[id] ? "completed" : "available";
+        return missionCardHtml({ index: i + 1, mission, status, busy: busyMissionId === id });
+      })
+      .join("");
+  }
+
+  missionsListEl.innerHTML = permanentCardHtml + adminCardsHtml;
 }
 
 missionsListEl.addEventListener("click", async (e) => {
   const btn = e.target.closest(".btn-mission");
-  if (!btn) return;
+  if (!btn || busyMissionId) return;
 
   const missionId = btn.dataset.missionId;
-  const mission = missions[missionId];
-  if (!mission || busyMissionId) return;
+
+  if (missionId === PERMANENT_MISSION.id) {
+    // Só copia/compartilha o link — a missão completa sozinha quando
+    // alguém de fato se cadastrar por ele (ver subscribeToTodayReferrals).
+    await shareInviteLink(currentUser.uid);
+    return;
+  }
+
+  const mission = adminMissions[missionId];
+  if (!mission) return;
 
   busyMissionId = missionId;
   renderMissionsList();
@@ -135,9 +183,41 @@ missionsListEl.addEventListener("click", async (e) => {
   }
 });
 
+async function shareInviteLink(uid) {
+  const link = new URL(`convite.html?u=${uid}`, window.location.href).href;
+  const shareData = {
+    title: "Convite para ser voluntário",
+    text: "Quero te convidar pra ser voluntário! Preencha seu cadastro por aqui:",
+    url: link,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+  } catch {
+    return; // usuário cancelou o compartilhamento
+  }
+  try {
+    await navigator.clipboard.writeText(link);
+    showToast("Link copiado! Envie pra pessoa que você quer convidar.");
+  } catch {
+    showToast(link);
+  }
+}
+
+function showToast(text) {
+  toastEl.textContent = text;
+  toastEl.hidden = false;
+  setTimeout(() => {
+    toastEl.hidden = true;
+  }, 5000);
+}
+
 function maybeCompleteDay() {
-  if (!assignment?.missionIds?.length) return;
-  const allDone = assignment.missionIds.every((id) => completions[id]);
+  if (assignment === undefined) return; // ainda não sabemos as missões do admin
+  const ids = allMissionIds();
+  const allDone = ids.length > 0 && ids.every((id) => completions[id]);
   if (allDone && currentUser) {
     markDayCompleted(currentUser.uid);
     dayJustCelebrated = true;
@@ -145,9 +225,8 @@ function maybeCompleteDay() {
 }
 
 function renderCelebrationIfNeeded(profile, levelInfo) {
-  const allDone =
-    assignment?.missionIds?.length &&
-    assignment.missionIds.every((id) => completions[id]);
+  const ids = allMissionIds();
+  const allDone = ids.length > 0 && ids.every((id) => completions[id]);
 
   if (!allDone || !dayJustCelebrated) {
     celebrationSlot.innerHTML = "";

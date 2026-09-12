@@ -39,5 +39,29 @@ service cloud.firestore {
         request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
+    // Voluntários indicados por um usuário, cadastrados pela própria pessoa
+    // convidada através do link público (convite.html) — por isso a escrita
+    // não exige login. Cada usuário só pode LER os voluntários que ele mesmo
+    // indicou. Sem update/delete: uma vez enviado, o registro é definitivo.
+    //
+    // Aviso: como é um formulário público sem autenticação, ele está sujeito
+    // a spam/abuso (alguém pode enviar várias entradas manualmente). Se isso
+    // virar problema, considere adicionar Firebase App Check ou um captcha
+    // na página convite.html.
+    match /volunteers/{volunteerId} {
+      allow read: if request.auth != null &&
+        resource.data.inviterUid == request.auth.uid;
+      allow create: if request.resource.data.keys().hasOnly(
+          ['name', 'whatsapp', 'inviterUid', 'date', 'createdAt']
+        ) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() < 200 &&
+        request.resource.data.inviterUid is string &&
+        request.resource.data.inviterUid.size() > 0 &&
+        request.resource.data.whatsapp is string &&
+        request.resource.data.whatsapp.size() < 40;
+      allow update, delete: if false;
+    }
   }
 }

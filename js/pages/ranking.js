@@ -42,13 +42,12 @@ function renderRanking(rows) {
 function rankRowHtml(row) {
   const isMe = row.id === currentUid;
   const medal = MEDALS[row.rank - 1] || row.rank;
-  const initial = (row.name || "?").charAt(0).toUpperCase();
 
   return `
     <div class="rank-row ${isMe ? "me" : ""}">
       <div class="rank-row-left">
         <span class="rank-medal">${medal}</span>
-        <div class="rank-avatar">${initial}</div>
+        <div class="rank-avatar"><img src="assets/avatar-default.svg" alt="" /></div>
         <div>
           <p class="rank-name ${isMe ? "me" : ""}">
             ${escapeHtml(row.name)} ${isMe ? '<span class="you-tag">(você)</span>' : ""}

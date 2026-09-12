@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A33E1" />
+  <title>Cadastro de voluntário — Missões</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="auth-screen">
+    <div class="auth-box" id="content-slot">
+      <div class="auth-header">
+        <div class="auth-logo font-display">M</div>
+        <h1 class="font-display">Seja voluntário</h1>
+        <p>Preencha seus dados pra confirmar sua participação.</p>
+      </div>
+
+      <form id="volunteer-form">
+        <div class="field">
+          <label for="name">Seu nome</label>
+          <input type="text" id="name" required autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="whatsapp">WhatsApp <span style="font-weight:400;color:rgba(11,15,25,0.4);">(opcional)</span></label>
+          <input type="tel" id="whatsapp" placeholder="(00) 00000-0000" autocomplete="tel" />
+        </div>
+
+        <p class="form-error" id="error-msg" hidden></p>
+
+        <button type="submit" class="btn-primary" id="submit-btn">Confirmar participação</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="js/pages/convite.js"></script>
+</body>
+</html>

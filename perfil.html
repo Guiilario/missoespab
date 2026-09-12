@@ -12,11 +12,11 @@
 
   <main class="app-main">
     <div class="card profile-card">
-      <div class="profile-avatar" id="profile-avatar">?</div>
-
-      <div id="profile-name-slot">
-        <h1 class="profile-name font-display" id="profile-name">Carregando...</h1>
+      <div class="profile-avatar">
+        <img src="assets/avatar-default.svg" alt="" />
       </div>
+
+      <h1 class="profile-name font-display" id="profile-name">Carregando...</h1>
       <p class="profile-username" id="profile-username">@usuario</p>
 
       <div class="profile-xp-block">
@@ -50,18 +50,16 @@
       <p class="value font-display" id="stat-days">0</p>
     </div>
 
-    <div class="profile-actions">
-      <button class="btn-secondary" id="edit-profile-btn">Editar perfil</button>
-
-      <button class="btn-secondary" id="change-pw-btn">Alterar senha</button>
-      <div class="password-box" id="password-box" hidden>
-        <input type="password" id="new-password" placeholder="Nova senha" />
-        <div class="password-box-actions">
-          <button class="confirm" id="confirm-pw-btn">Confirmar</button>
-          <button class="cancel" id="cancel-pw-btn">Cancelar</button>
-        </div>
+    <div class="card section-gap" id="referrals-card">
+      <h2 class="font-display" style="font-size:0.875rem;font-weight:600;margin:0;">
+        Voluntários que você indicou
+      </h2>
+      <div id="referrals-list" style="margin-top:0.75rem;">
+        <p class="missions-loading" style="padding:0.5rem 0;">Carregando...</p>
       </div>
+    </div>
 
+    <div class="profile-actions">
       <p class="profile-msg" id="profile-msg" hidden></p>
 
       <button class="btn-danger" id="logout-btn">Sair</button>

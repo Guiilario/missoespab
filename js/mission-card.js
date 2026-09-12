@@ -15,19 +15,19 @@ const CHECK_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
  * Retorna o HTML de um card de missão.
  * status: "available" | "in_progress" | "pending_validation" | "completed" | "expired"
  */
-export function missionCardHtml({ index, mission, status, busy }) {
+export function missionCardHtml({ index, mission, status, busy, actionLabel }) {
   const isCompleted = status === "completed";
   const isExpired = status === "expired";
   const isPending = status === "pending_validation";
   const isInProgress = status === "in_progress";
 
-  const actionLabel = busy
-    ? "Validando..."
+  const label = busy
+    ? "Aguarde..."
     : isPending
     ? "Validando..."
     : isInProgress
     ? "Continuar"
-    : "Cumprir missão";
+    : actionLabel || "Cumprir missão";
 
   const rightSideHtml = isCompleted
     ? `<span class="mission-status done">${CHECK_ICON} Concluída</span>`
@@ -35,7 +35,7 @@ export function missionCardHtml({ index, mission, status, busy }) {
     ? `<span class="mission-status expired">Expirada</span>`
     : `<button class="btn-mission" data-mission-id="${mission.id}" ${
         busy || isPending ? "disabled" : ""
-      }>${actionLabel}</button>`;
+      }>${label}</button>`;
 
   return `
     <div class="mission-card ${isExpired ? "expired" : ""} ${

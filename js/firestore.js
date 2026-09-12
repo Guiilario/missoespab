@@ -1,12 +1,14 @@
 import {
   db,
   doc,
+  addDoc,
   getDoc,
   setDoc,
   updateDoc,
   runTransaction,
   collection,
   query,
+  where,
   orderBy,
   limit,
   onSnapshot,
@@ -28,7 +30,6 @@ export async function createUserProfile(uid, { name, username, email }) {
     name,
     username,
     email,
-    avatarUrl: "",
     totalXp: 0,
     completedMissionsCount: 0,
     currentStreak: 0,
@@ -141,6 +142,50 @@ export async function markDayCompleted(uid) {
       currentStreak: newStreak,
       daysCompleted: increment(1),
     });
+  });
+}
+
+// ---------- CONVITES / VOLUNTÁRIOS ----------
+// A pessoa convidada se cadastra ela mesma (própria vontade, próprio nome,
+// WhatsApp opcional) pela página pública convite.html?u={uid do convidador}.
+// Ninguém preenche dado de terceiro sem essa pessoa estar ali, digitando.
+
+/**
+ * Cria o registro do voluntário que se cadastrou pelo link de convite.
+ * Chamado sem o usuário estar logado (a página convite.html é pública).
+ */
+export async function createVolunteerReferral(inviterUid, { name, whatsapp }) {
+  await addDoc(collection(db, "volunteers"), {
+    name: name.trim(),
+    whatsapp: (whatsapp || "").trim(),
+    inviterUid,
+    date: todayKey(),
+    createdAt: serverTimestamp(),
+  });
+}
+
+/** Assina os voluntários que se cadastraram HOJE pelo link deste usuário. */
+export function subscribeToTodayReferrals(inviterUid, callback) {
+  const q = query(
+    collection(db, "volunteers"),
+    where("inviterUid", "==", inviterUid),
+    where("date", "==", todayKey())
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/** Assina todos os voluntários já cadastrados pelo link deste usuário. */
+export function subscribeToAllReferrals(inviterUid, callback, topN = 50) {
+  const q = query(
+    collection(db, "volunteers"),
+    where("inviterUid", "==", inviterUid),
+    orderBy("createdAt", "desc"),
+    limit(topN)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });
 }
 
