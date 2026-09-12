@@ -27,10 +27,14 @@ window.addEventListener("auth-ready", async (e) => {
 
   const isAdmin = await checkIsAdmin(currentUser.uid);
   if (!isAdmin) {
-    alert("Acesso restrito a administradores.");
+    document.getElementById("admin-checking").innerHTML =
+      `<p class="missions-loading">Acesso restrito a administradores. Redirecionando...</p>`;
     window.location.href = "index.html";
     return;
   }
+
+  document.getElementById("admin-checking").hidden = true;
+  document.getElementById("admin-content").hidden = false;
 
   init();
 });
@@ -69,12 +73,25 @@ createUserForm.addEventListener("submit", async (e) => {
 
   try {
     const uid = await createUserAsAdmin({ name, email, password });
-    await createUserProfile(uid, { name, username, email });
+
+    try {
+      await createUserProfile(uid, { name, username, email });
+    } catch (profileErr) {
+      // A conta de login JÁ foi criada nesse ponto — só o perfil no
+      // Firestore falhou. Mostra o erro real (não um genérico) porque
+      // "tentar de novo" com o mesmo e-mail vai dar "já existe".
+      throw new Error(
+        `Login criado, mas falhou ao salvar o perfil (${
+          profileErr.code || profileErr.message
+        }). Copie esse código e me avise — não tente criar de novo com o mesmo e-mail.`
+      );
+    }
+
     createUserSuccess.textContent = `Usuário "${name}" criado com sucesso.`;
     createUserSuccess.hidden = false;
     createUserForm.reset();
   } catch (err) {
-    createUserError.textContent = friendlyAuthError(err.code);
+    createUserError.textContent = err.code ? friendlyAuthError(err.code) : err.message;
     createUserError.hidden = false;
   } finally {
     createUserBtn.disabled = false;

@@ -2,6 +2,8 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
 import {
   getAuth,
+  initializeAuth,
+  inMemoryPersistence,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -55,13 +57,17 @@ isSupported().then((ok) => {
 
 /**
  * Cria uma conta de login SEM deslogar o admin que está executando isso.
- * Trick: abre um app Firebase "secundário" (uma segunda sessão isolada),
- * cria o usuário nela, e descarta essa sessão em seguida — a sessão
- * principal (o admin logado na página) nunca é afetada.
+ * Trick: abre um app Firebase "secundário" (uma segunda sessão isolada) com
+ * persistência EM MEMÓRIA — ou seja, essa sessão nunca toca o
+ * localStorage/IndexedDB do navegador, então não tem como se misturar com a
+ * sessão principal (o admin logado na página) nem sobreviver além desta
+ * função. Cria o usuário nela e descarta essa sessão em seguida.
  */
 export async function createUserAsAdmin({ name, email, password }) {
   const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
-  const secondaryAuth = getAuth(secondaryApp);
+  const secondaryAuth = initializeAuth(secondaryApp, {
+    persistence: inMemoryPersistence,
+  });
   try {
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     if (name) await updateProfile(cred.user, { displayName: name });
