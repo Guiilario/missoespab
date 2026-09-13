@@ -174,6 +174,8 @@ function renderMissionsList() {
           } else {
             actionLabel = "Concluir (Tempo esgotado)";
           }
+        } else if (isRepeatable && completions[id]) {
+          actionLabel = "Repetir missão";
         }
         
         return missionCardHtml({ 

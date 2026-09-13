@@ -22,7 +22,7 @@ export function missionCardHtml({ index, mission, status, busy, actionLabel, cus
   const isInProgress = status === "in_progress";
 
   const label = busy
-    ? "Aguarde..."
+    ? (actionLabel || "Aguarde...")
     : isPending
     ? "Validando..."
     : isInProgress
