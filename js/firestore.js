@@ -63,6 +63,20 @@ export function subscribeToAllUsers(callback) {
   });
 }
 
+/** Retorna todos os logs de missões concluídas por um usuário (para o admin). */
+export async function getMissionLogsForUser(uid) {
+  const q = query(collection(db, "missionLogs"), where("uid", "==", uid));
+  const snap = await getDocs(q);
+  const logs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Ordena por data mais recente primeiro
+  logs.sort((a, b) => {
+    const timeA = a.completedAt?.toMillis ? a.completedAt.toMillis() : 0;
+    const timeB = b.completedAt?.toMillis ? b.completedAt.toMillis() : 0;
+    return timeB - timeA;
+  });
+  return logs;
+}
+
 /** Ativa/desativa o acesso de um usuário ao app (uso do painel admin). */
 export async function setUserDisabled(uid, disabled) {
   await updateDoc(doc(db, "users", uid), { disabled });

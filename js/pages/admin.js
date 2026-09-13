@@ -6,12 +6,13 @@ import {
   subscribeToAllUsers,
   setUserDisabled,
   subscribeToAllMissions,
-  createMission,
   assignMissionToDate,
   removeMissionFromDate,
   subscribeToAssignmentForDate,
   subscribeToMission,
   todayKey,
+  getMissionLogsForUser,
+  getDocs,
 } from "../firestore.js";
 
 renderNav("admin"); // não corresponde a nenhum item da nav — fica sem destaque
@@ -192,6 +193,7 @@ function renderUsersList(users) {
       } XP</p>
           </div>
           <div class="admin-row-actions">
+            <button class="admin-btn-small" data-view-uid="${u.id}" data-name="${escapeHtml(u.name)}" data-username="${escapeHtml(u.username)}" data-xp="${u.totalXp || 0}">Ver</button>
             <button class="admin-btn-small ${disabled ? "ok" : "danger"}" data-uid="${u.id}" data-disabled="${disabled}">
               ${disabled ? "Reativar" : "Desativar"}
             </button>
@@ -203,17 +205,92 @@ function renderUsersList(users) {
 }
 
 usersListEl.addEventListener("click", async (e) => {
-  const btn = e.target.closest("button[data-uid]");
-  if (!btn) return;
-  const uid = btn.dataset.uid;
-  const isCurrentlyDisabled = btn.dataset.disabled === "true";
-  btn.disabled = true;
-  try {
-    await setUserDisabled(uid, !isCurrentlyDisabled);
-  } finally {
-    btn.disabled = false;
+  const disableBtn = e.target.closest("button[data-uid]");
+  if (disableBtn) {
+    const uid = disableBtn.dataset.uid;
+    const isCurrentlyDisabled = disableBtn.dataset.disabled === "true";
+    disableBtn.disabled = true;
+    try {
+      await setUserDisabled(uid, !isCurrentlyDisabled);
+    } finally {
+      disableBtn.disabled = false;
+    }
+    return;
+  }
+
+  const viewBtn = e.target.closest("button[data-view-uid]");
+  if (viewBtn) {
+    const uid = viewBtn.dataset.viewUid;
+    openUserDetails(uid, {
+      name: viewBtn.dataset.name,
+      username: viewBtn.dataset.username,
+      xp: viewBtn.dataset.xp,
+    });
   }
 });
+
+// ---------- Modal de Detalhes do Usuário ----------
+const userModal = document.getElementById("user-details-modal");
+const userModalName = document.getElementById("user-modal-name");
+const userModalInfo = document.getElementById("user-modal-info");
+const userModalLogs = document.getElementById("user-modal-logs");
+
+document.getElementById("user-modal-close")?.addEventListener("click", () => {
+  userModal.style.display = "none";
+});
+
+async function openUserDetails(uid, user) {
+  userModalName.textContent = user.name;
+  userModalInfo.innerHTML = `@${user.username} &bull; ${user.xp} XP total`;
+  userModalLogs.innerHTML = `<p class="missions-loading">Buscando histórico...</p>`;
+  userModal.style.display = "flex";
+
+  try {
+    const logs = await getMissionLogsForUser(uid);
+    if (!logs.length) {
+      userModalLogs.innerHTML = `<p class="missions-loading">Nenhuma missão concluída.</p>`;
+      return;
+    }
+
+    userModalLogs.innerHTML = logs.map((log) => {
+      const mission = allMissionsCatalog.find((m) => m.id === log.missionId);
+      const title = mission ? mission.title : log.missionId;
+      const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
+      
+      let proofHtml = "";
+      if (log.proofData) {
+        proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
+        if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
+        if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
+        if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
+        if (log.proofData.photoUrl) {
+          proofHtml += `<a href="${log.proofData.photoUrl}" target="_blank" style="display:inline-block;margin-top:0.5rem;color:var(--brand);text-decoration:none;font-weight:600;">Ver Foto &rarr;</a>`;
+        }
+        proofHtml += `</div>`;
+      } else if (log.referralId) {
+         proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
+         proofHtml += `<p style="margin:0;">Convite de voluntário</p>`;
+         proofHtml += `</div>`;
+      }
+
+      return `
+        <div style="border-bottom:1px solid #eee;padding:1rem 0;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <strong style="display:block;margin-bottom:0.25rem;">${escapeHtml(title)}</strong>
+              <span style="font-size:0.75rem;color:#666;">${dateStr}</span>
+            </div>
+            <span style="font-size:0.875rem;font-weight:600;color:var(--mint);">+${log.xpAwarded} XP</span>
+          </div>
+          ${proofHtml}
+        </div>
+      `;
+    }).join("");
+  } catch (err) {
+    userModalLogs.innerHTML = `<p style="color:red;font-size:0.875rem;">Erro ao buscar histórico.</p>`;
+    console.error(err);
+  }
+}
 
 // ---------- Missão do dia ----------
 const existingMissionSelect = document.getElementById("existing-mission-select");

@@ -126,7 +126,24 @@
       </div>
     </div>
     </div>
+    </div>
   </main>
+
+  <!-- ---------- Modal de Detalhes do Usuário ---------- -->
+  <div id="user-details-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-card);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 id="user-modal-name" style="font-family:var(--font-display);margin:0;font-size:1.25rem;">Nome do Usuário</h3>
+        <button id="user-modal-close" style="background:transparent;border:none;font-size:1.5rem;cursor:pointer;">&times;</button>
+      </div>
+      <p id="user-modal-info" style="font-size:0.875rem;color:var(--ink);margin-bottom:1.5rem;"></p>
+      
+      <h4 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1rem;">Missões Concluídas</h4>
+      <div id="user-modal-logs">
+        <p class="missions-loading">Carregando missões...</p>
+      </div>
+    </div>
+  </div>
 
   <div id="nav-bottom"></div>
 
