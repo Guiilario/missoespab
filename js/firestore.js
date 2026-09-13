@@ -277,6 +277,8 @@ export async function completeRepeatableMission(uid, missionId, xpReward, proofD
   const userRef = doc(db, "users", uid);
 
   await runTransaction(db, async (tx) => {
+    const existingDaily = await tx.get(dailyCompletionRef);
+
     tx.set(logRef, {
       uid,
       missionId,
@@ -291,7 +293,6 @@ export async function completeRepeatableMission(uid, missionId, xpReward, proofD
       completedMissionsCount: increment(1),
     });
 
-    const existingDaily = await tx.get(dailyCompletionRef);
     if (!existingDaily.exists()) {
       tx.set(dailyCompletionRef, {
         uid,

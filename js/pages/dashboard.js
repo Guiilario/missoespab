@@ -164,13 +164,29 @@ function renderMissionsList() {
         let busy = busyMissionId === id;
         let actionLabel = undefined;
         
-        const timer = activeTimers[id];
+        let timer = activeTimers[id];
+        if (!timer) {
+          const savedEnd = localStorage.getItem(`timer_${id}`);
+          if (savedEnd) {
+             const end = parseInt(savedEnd, 10);
+             timer = { endTime: end, local: localStorage.getItem(`timer_local_${id}`) };
+             activeTimers[id] = timer;
+             const intervalId = setInterval(() => {
+               if (Date.now() >= end) clearInterval(intervalId);
+               renderMissionsList();
+             }, 1000);
+             timer.intervalId = intervalId;
+          }
+        }
+        
         if (timer) {
           const now = Date.now();
           if (now < timer.endTime) {
             busy = true;
-            const remainingMins = Math.ceil((timer.endTime - now) / 60000);
-            actionLabel = `Aguarde... (${remainingMins}m)`;
+            const remaining = timer.endTime - now;
+            const m = Math.floor(remaining / 60000);
+            const s = Math.floor((remaining % 60000) / 1000);
+            actionLabel = `Aguarde... (${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")})`;
           } else {
             actionLabel = "Concluir (Tempo esgotado)";
           }
@@ -219,6 +235,9 @@ missionsListEl.addEventListener("click", async (e) => {
       if (!local) return;
       
       const endTime = Date.now() + 60 * 60 * 1000; // 1 hora
+      localStorage.setItem(`timer_${missionId}`, endTime.toString());
+      localStorage.setItem(`timer_local_${missionId}`, local);
+      
       activeTimers[missionId] = { endTime, local };
       
       const intervalId = setInterval(() => {
@@ -226,16 +245,15 @@ missionsListEl.addEventListener("click", async (e) => {
           clearInterval(intervalId);
         }
         renderMissionsList();
-      }, 60000); // Atualiza a cada 1 minuto
+      }, 1000); // Atualiza a cada 1 segundo
       
       activeTimers[missionId].intervalId = intervalId;
       renderMissionsList();
       return;
     } else {
       if (Date.now() < timer.endTime) {
-        return; // ainda rodando, nao deveria ser clicável (pois ta busy) mas só garantindo
+        return; // ainda rodando
       }
-      // Se passou o tempo, vai completar normal
     }
   }
   
@@ -259,12 +277,16 @@ missionsListEl.addEventListener("click", async (e) => {
     if (isRepeatable) {
       await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, proofData);
       if (titleLower.includes("panfletagem")) {
+        clearInterval(activeTimers[missionId].intervalId);
         delete activeTimers[missionId];
+        localStorage.removeItem(`timer_${missionId}`);
+        localStorage.removeItem(`timer_local_${missionId}`);
       }
     } else {
       await completeMission(currentUser.uid, missionId, mission.xpReward);
     }
     completions[missionId] = true;
+    alert("Missão concluída!");
   } finally {
     busyMissionId = null;
     renderMissionsList();
