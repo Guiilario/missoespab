@@ -32,15 +32,16 @@
   padding: 2.5rem 2rem;
 }
 .admin-login-logo {
-  width: 56px;
-  height: 56px;
+  width: auto;
+  height: auto;
   margin: 0 auto 1rem;
-  border-radius: 1rem;
-  background: rgba(255,255,255,0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+}
+.admin-login-logo img {
+  height: 48px;
+  width: auto;
 }
 .admin-login-box .admin-field label {
   color: rgba(255,255,255,0.7);
@@ -107,15 +108,14 @@
   align-items: center;
   gap: 0.75rem;
 }
-.admin-brand-icon {
-  width: 40px;
-  height: 40px;
+.admin-brand-logo-link {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.12);
-  border-radius: 0.75rem;
-  font-size: 1.125rem;
+  text-decoration: none;
+}
+.admin-brand-logo-img {
+  height: 36px;
+  width: auto;
 }
 .admin-brand-title {
   margin: 0;

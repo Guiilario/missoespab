@@ -26,26 +26,27 @@ let missionDetailUnsubs = [];
 let activeMissionDetailUnsubs = [];
 
 // ---------- Tab system ----------
-const tabButtons = document.querySelectorAll(".admin-tab");
-const tabContents = document.querySelectorAll(".admin-tab-content");
+document.getElementById("admin-tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".admin-tab");
+  if (!btn) return;
 
-tabButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.tab;
+  const target = btn.dataset.tab;
+  if (!target) return;
 
-    tabButtons.forEach((b) => b.classList.remove("active"));
-    tabContents.forEach((c) => c.classList.remove("active"));
+  // Deactivate all tabs
+  document.querySelectorAll(".admin-tab").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".admin-tab-content").forEach((c) => c.classList.remove("active"));
 
-    btn.classList.add("active");
-    const el = document.getElementById(target);
-    if (el) {
-      el.classList.add("active");
-      // Re-trigger animation
-      el.style.animation = "none";
-      el.offsetHeight; // reflow
-      el.style.animation = "";
-    }
-  });
+  // Activate clicked tab
+  btn.classList.add("active");
+  const el = document.getElementById(target);
+  if (el) {
+    el.classList.add("active");
+    // Re-trigger animation
+    el.style.animation = "none";
+    el.offsetHeight; // reflow
+    el.style.animation = "";
+  }
 });
 
 // ---------- Login exclusivo do admin ----------

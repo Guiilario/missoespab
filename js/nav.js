@@ -15,7 +15,7 @@ export function renderNav(currentPage) {
   if (top) {
     top.innerHTML = `
       <div class="nav-top-inner">
-        <span class="brand-logo">Missões</span>
+        <a href="index.html" class="brand-logo"><img src="assets/logo-appab.svg" alt="APPab" style="height:32px;" /></a>
         <nav class="nav-top-links">
           ${ITEMS.map(
             (item) => `
