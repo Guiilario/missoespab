@@ -1,4 +1,3 @@
-import { renderNav } from "../nav.js";
 import { auth, signInWithEmailAndPassword, signOut, createUserAsAdmin } from "../firebase.js";
 import {
   checkIsAdmin,
@@ -11,23 +10,45 @@ import {
   removeMissionFromDate,
   subscribeToAssignmentForDate,
   subscribeToMission,
+  subscribeToRanking,
   todayKey,
   getMissionLogsForUser,
 } from "../firestore.js";
 
-renderNav("admin"); // não corresponde a nenhum item da nav — fica sem destaque
+// Não renderiza a nav global — o admin tem sua própria UI
 
 let currentUser = null;
 let allMissionsCatalog = [];
+let allUsersCache = [];
 let assignmentUnsub = null;
+let activeMissionsUnsub = null;
 let missionDetailUnsubs = [];
+let activeMissionDetailUnsubs = [];
+
+// ---------- Tab system ----------
+const tabButtons = document.querySelectorAll(".admin-tab");
+const tabContents = document.querySelectorAll(".admin-tab-content");
+
+tabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.tab;
+
+    tabButtons.forEach((b) => b.classList.remove("active"));
+    tabContents.forEach((c) => c.classList.remove("active"));
+
+    btn.classList.add("active");
+    const el = document.getElementById(target);
+    if (el) {
+      el.classList.add("active");
+      // Re-trigger animation
+      el.style.animation = "none";
+      el.offsetHeight; // reflow
+      el.style.animation = "";
+    }
+  });
+});
 
 // ---------- Login exclusivo do admin ----------
-// Esta página NÃO reaproveita a sessão normal do app (não usa auth-guard.js):
-// toda vez que alguém abre admin.html, ela pede e-mail/senha de novo, e só
-// libera o conteúdo depois de duas checagens: (1) a senha bate no Firebase
-// Authentication de verdade, e (2) essa conta está marcada como admin no
-// Firestore (coleção admins/{uid}).
 const loginScreen = document.getElementById("admin-login-screen");
 const contentEl = document.getElementById("admin-content");
 const loginForm = document.getElementById("admin-login-form");
@@ -46,10 +67,6 @@ loginForm.addEventListener("submit", async (e) => {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
 
-    // Logo após o login, o Firestore às vezes ainda não "recebeu" o token
-    // novo (race condition rara mas real) e recusa a próxima leitura por
-    // permissão mesmo com tudo certo. Se isso acontecer, espera um instante
-    // e tenta de novo antes de desistir.
     const isAdmin = await checkIsAdminWithRetry(cred.user.uid);
     if (!isAdmin) {
       await signOut(auth);
@@ -102,16 +119,31 @@ function friendlyLoginError(code) {
 }
 
 function init() {
-  subscribeToAllUsers(renderUsersList);
+  subscribeToAllUsers((users) => {
+    allUsersCache = users;
+    renderFilteredUsers();
+  });
   subscribeToAllMissions((missions) => {
     allMissionsCatalog = missions;
     renderExistingMissionSelect();
   });
 
+  // Data para "Adicionar Missões"
   const dateInput = document.getElementById("assignment-date");
   dateInput.value = todayKey();
-  dateInput.addEventListener("change", () => watchDate(dateInput.value));
-  watchDate(dateInput.value);
+
+  // Data para "Missões Ativas"
+  const activeDateInput = document.getElementById("active-missions-date");
+  activeDateInput.value = todayKey();
+  activeDateInput.addEventListener("change", () => watchActiveDate(activeDateInput.value));
+  watchActiveDate(activeDateInput.value);
+
+  // Ranking
+  subscribeToRanking(renderAdminRanking);
+
+  // Search filter
+  const filterInput = document.getElementById("users-filter");
+  filterInput.addEventListener("input", () => renderFilteredUsers());
 }
 
 // ---------- Criar usuário ----------
@@ -131,7 +163,7 @@ createUserForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("new-password").value;
 
   createUserBtn.disabled = true;
-  createUserBtn.textContent = "Criando...";
+  createUserBtn.innerHTML = "Criando...";
 
   try {
     const uid = await createUserAsAdmin({ name, email, password });
@@ -139,9 +171,6 @@ createUserForm.addEventListener("submit", async (e) => {
     try {
       await createUserProfile(uid, { name, username, email });
     } catch (profileErr) {
-      // A conta de login JÁ foi criada nesse ponto — só o perfil no
-      // Firestore falhou. Mostra o erro real (não um genérico) porque
-      // "tentar de novo" com o mesmo e-mail vai dar "já existe".
       throw new Error(
         `Login criado, mas falhou ao salvar o perfil (${
           profileErr.code || profileErr.message
@@ -157,7 +186,7 @@ createUserForm.addEventListener("submit", async (e) => {
     createUserError.hidden = false;
   } finally {
     createUserBtn.disabled = false;
-    createUserBtn.textContent = "Criar usuário";
+    createUserBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/><line x1="19" y1="8" x2="19" y2="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="22" y1="11" x2="16" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Criar usuário`;
   }
 });
 
@@ -170,12 +199,32 @@ function friendlyAuthError(code) {
   return map[code] || "Não foi possível criar o usuário. Tente de novo.";
 }
 
-// ---------- Lista de usuários ----------
+// ---------- Lista de usuários com filtro ----------
 const usersListEl = document.getElementById("users-list");
+const usersCountEl = document.getElementById("users-count");
+const usersFilterInput = document.getElementById("users-filter");
+
+function renderFilteredUsers() {
+  const query = (usersFilterInput?.value || "").toLowerCase().trim();
+  let filtered = allUsersCache;
+
+  if (query) {
+    filtered = allUsersCache.filter((u) => {
+      return (
+        (u.name || "").toLowerCase().includes(query) ||
+        (u.username || "").toLowerCase().includes(query) ||
+        (u.email || "").toLowerCase().includes(query)
+      );
+    });
+  }
+
+  usersCountEl.textContent = `${filtered.length} de ${allUsersCache.length} usuários`;
+  renderUsersList(filtered);
+}
 
 function renderUsersList(users) {
   if (!users.length) {
-    usersListEl.innerHTML = `<p class="missions-loading">Nenhum usuário ainda.</p>`;
+    usersListEl.innerHTML = `<p class="admin-empty-msg">Nenhum usuário encontrado.</p>`;
     return;
   }
 
@@ -183,18 +232,17 @@ function renderUsersList(users) {
     .map((u) => {
       const disabled = !!u.disabled;
       return `
-        <div class="admin-row">
-          <div>
-            <p class="admin-row-name">${escapeHtml(u.name)} <span class="admin-badge ${
-        disabled ? "off" : ""
-      }">${disabled ? "Desativado" : "Ativo"}</span></p>
-            <p class="admin-row-sub">@${escapeHtml(u.username)} · ${escapeHtml(u.email)} · ${
-        u.totalXp || 0
-      } XP</p>
+        <div class="admin-user-row">
+          <div class="admin-user-info">
+            <p class="admin-user-name">
+              ${escapeHtml(u.name)}
+              <span class="admin-status ${disabled ? "disabled" : "active"}">${disabled ? "Desativado" : "Ativo"}</span>
+            </p>
+            <p class="admin-user-meta">@${escapeHtml(u.username)} · ${escapeHtml(u.email)} · ${u.totalXp || 0} XP</p>
           </div>
-          <div class="admin-row-actions">
-            <button class="admin-btn-small" data-view-uid="${u.id}" data-name="${escapeHtml(u.name)}" data-username="${escapeHtml(u.username)}" data-xp="${u.totalXp || 0}">Ver</button>
-            <button class="admin-btn-small ${disabled ? "ok" : "danger"}" data-uid="${u.id}" data-disabled="${disabled}">
+          <div class="admin-user-actions">
+            <button class="admin-btn-sm" data-view-uid="${u.id}" data-name="${escapeHtml(u.name)}" data-username="${escapeHtml(u.username)}" data-xp="${u.totalXp || 0}">Ver</button>
+            <button class="admin-btn-sm ${disabled ? "ok" : "danger"}" data-uid="${u.id}" data-disabled="${disabled}">
               ${disabled ? "Reativar" : "Desativar"}
             </button>
           </div>
@@ -246,7 +294,7 @@ document.getElementById("user-modal-close")?.addEventListener("click", () => {
 async function openUserDetails(uid, user) {
   userModalName.textContent = user.name;
   userModalInfo.innerHTML = `@${user.username} &bull; ${user.xp} XP total`;
-  userModalLogs.innerHTML = `<p class="missions-loading">Buscando histórico...</p>`;
+  userModalLogs.innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
   userModal.style.display = "flex";
 
   try {
@@ -261,7 +309,7 @@ async function openUserDetails(uid, user) {
 
 function renderLogsPage() {
   if (!currentUserLogs.length) {
-    userModalLogs.innerHTML = `<p class="missions-loading">Nenhuma missão concluída.</p>`;
+    userModalLogs.innerHTML = `<p class="admin-empty-msg">Nenhuma missão concluída.</p>`;
     return;
   }
 
@@ -359,14 +407,13 @@ function openPhotoPopup(url) {
   });
 }
 
-// ---------- Missão do dia ----------
+// ---------- Adicionar Missões ----------
 const existingMissionSelect = document.getElementById("existing-mission-select");
 const assignExistingBtn = document.getElementById("assign-existing-btn");
 const createMissionForm = document.getElementById("create-mission-form");
 const createMissionError = document.getElementById("create-mission-error");
 const createMissionSuccess = document.getElementById("create-mission-success");
 const createMissionBtn = document.getElementById("create-mission-btn");
-const assignedMissionsListEl = document.getElementById("assigned-missions-list");
 
 function renderExistingMissionSelect() {
   existingMissionSelect.innerHTML = allMissionsCatalog
@@ -422,27 +469,30 @@ createMissionForm.addEventListener("submit", async (e) => {
   }
 });
 
-function watchDate(date) {
-  if (assignmentUnsub) assignmentUnsub();
-  missionDetailUnsubs.forEach((u) => u());
-  missionDetailUnsubs = [];
+// ---------- Missões Ativas ----------
+const assignedMissionsListEl = document.getElementById("assigned-missions-list");
 
-  assignmentUnsub = subscribeToAssignmentForDate(date, (assignment) => {
+function watchActiveDate(date) {
+  if (activeMissionsUnsub) activeMissionsUnsub();
+  activeMissionDetailUnsubs.forEach((u) => u());
+  activeMissionDetailUnsubs = [];
+
+  activeMissionsUnsub = subscribeToAssignmentForDate(date, (assignment) => {
     renderAssignedMissions(date, assignment?.missionIds || []);
   });
 }
 
 function renderAssignedMissions(date, missionIds) {
-  missionDetailUnsubs.forEach((u) => u());
-  missionDetailUnsubs = [];
+  activeMissionDetailUnsubs.forEach((u) => u());
+  activeMissionDetailUnsubs = [];
 
   if (!missionIds.length) {
-    assignedMissionsListEl.innerHTML = `<p class="missions-loading">Nenhuma missão atribuída nessa data.</p>`;
+    assignedMissionsListEl.innerHTML = `<p class="admin-empty-msg">Nenhuma missão atribuída nessa data.</p>`;
     return;
   }
 
   const details = {};
-  assignedMissionsListEl.innerHTML = `<p class="missions-loading">Carregando...</p>`;
+  assignedMissionsListEl.innerHTML = `<p class="admin-empty-msg">Carregando...</p>`;
 
   missionIds.forEach((id) => {
     const unsub = subscribeToMission(id, (mission) => {
@@ -451,7 +501,7 @@ function renderAssignedMissions(date, missionIds) {
         paintAssignedList(date, missionIds, details);
       }
     });
-    missionDetailUnsubs.push(unsub);
+    activeMissionDetailUnsubs.push(unsub);
   });
 }
 
@@ -461,13 +511,13 @@ function paintAssignedList(date, missionIds, details) {
       const m = details[id];
       if (!m) return "";
       return `
-        <div class="admin-row">
+        <div class="admin-mission-row">
           <div>
-            <p class="admin-row-name">${escapeHtml(m.title)}</p>
-            <p class="admin-row-sub">+${m.xpReward} XP · ${escapeHtml(m.difficulty)}</p>
+            <p class="admin-mission-name">${escapeHtml(m.title)}</p>
+            <p class="admin-mission-meta">+${m.xpReward} XP · ${escapeHtml(m.difficulty)}</p>
           </div>
-          <div class="admin-row-actions">
-            <button class="admin-btn-small danger" data-remove-id="${id}" data-date="${date}">Remover</button>
+          <div>
+            <button class="admin-btn-sm danger" data-remove-id="${id}" data-date="${date}">Remover</button>
           </div>
         </div>
       `;
@@ -486,6 +536,37 @@ assignedMissionsListEl.addEventListener("click", async (e) => {
   }
 });
 
+// ---------- Ranking no admin ----------
+const MEDALS = ["🥇", "🥈", "🥉"];
+const adminRankingTable = document.getElementById("admin-ranking-table");
+
+function renderAdminRanking(rows) {
+  if (!rows.length) {
+    adminRankingTable.innerHTML = `<p class="admin-empty-msg">Ninguém no ranking ainda.</p>`;
+    return;
+  }
+
+  adminRankingTable.innerHTML = rows
+    .map((row) => {
+      const medal = MEDALS[row.rank - 1] || row.rank;
+      return `
+        <div class="admin-rank-row">
+          <div class="admin-rank-left">
+            <span class="admin-rank-position">${medal}</span>
+            <div class="admin-rank-avatar"><img src="assets/avatar-default.svg" alt="" /></div>
+            <div>
+              <p class="admin-rank-name">${escapeHtml(row.name)}</p>
+              <p class="admin-rank-username">@${escapeHtml(row.username)}</p>
+            </div>
+          </div>
+          <span class="admin-rank-xp">${(row.totalXp || 0).toLocaleString("pt-BR")} XP</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+// ---------- Helpers ----------
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str ?? "";

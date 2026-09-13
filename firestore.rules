@@ -46,14 +46,13 @@ service cloud.firestore {
 
     // Mission completions: a user can create their own completion record
     // (id is uid_missionId_date so duplicates are naturally prevented),
-    // but never edit or delete one after the fact.
-    match /missionCompletions/{completionId} {
-      allow read: if request.auth != null &&
-        completionId.matches(request.auth.uid + '_.*');
-      allow create: if request.auth != null &&
-        completionId.matches(request.auth.uid + '_.*') &&
-        request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+    match /dailyAssignments/{dateStr} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /missionCompletions/{compId} {
+      allow read, write: if request.auth != null && compId.matches(request.auth.uid + '_.*');
     }
 
     // Logs de missões repetíveis (Adesivagem, Panfletagem, convites).
@@ -67,13 +66,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Voluntários indicados por um usuário, cadastrados pela própria pessoa
-    // convidada através do link público (convite.html) — por isso a escrita
-    // não exige login. Cada usuário só pode LER os voluntários que ele mesmo
-    // indicou (admin pode ler tudo). Sem update/delete: uma vez enviado, o
-    // registro é definitivo.
-    //
-    // Aviso: como é um formulário público sem autenticação, ele está sujeito
     // a spam/abuso (alguém pode enviar várias entradas manualmente). Se isso
     // virar problema, considere adicionar Firebase App Check ou um captcha
     // na página convite.html.
