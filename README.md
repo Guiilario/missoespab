@@ -87,10 +87,25 @@ interface.
 
 ## Painel administrativo (`admin.html`)
 
-Só aparece/funciona pra quem tem o documento em `admins/{uid}` (ver acima).
-Um usuário comum que tentar acessar a URL diretamente é redirecionado de
-volta pra tela Hoje. Se você estiver logado como admin, aparece um botão
-"Painel administrativo" na tela de Perfil.
+Diferente do resto do app, essa página **não reaproveita** a sessão normal de
+quem já está logado — ela sempre mostra sua própria tela de login (e-mail +
+senha), mesmo que a pessoa já esteja logada em outra conta no navegador.
+Só libera o conteúdo depois de duas checagens em sequência:
+
+1. A senha bate de verdade no Firebase Authentication (`signInWithEmailAndPassword`).
+2. Essa conta especificamente está marcada como admin no Firestore
+   (documento em `admins/{uid}` — ver setup abaixo).
+
+Se qualquer uma das duas falhar, a pessoa nunca vê o conteúdo da página (nem
+por um instante) — só o formulário de login. Quando o login funciona, aparece
+um selo azul no topo "🛡️ Sessão de administrador — seu@email.com" pra deixar
+claro que essa sessão tem privilégio, com um botão "Sair" ao lado.
+
+**Conta admin sugerida:** `admin@pab.com.br`. Crie essa conta em
+Authentication → Add user com a senha que você quiser (a senha nunca fica no
+código-fonte — o Firebase é quem valida), e não esqueça de criar também o
+documento em `admins/{uid dessa conta}` (mesmo passo do setup inicial,
+repetido pra essa conta específica).
 
 O painel tem três blocos:
 

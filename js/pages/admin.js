@@ -1,5 +1,5 @@
 import { renderNav } from "../nav.js";
-import { createUserAsAdmin } from "../firebase.js";
+import { auth, signInWithEmailAndPassword, signOut, createUserAsAdmin } from "../firebase.js";
 import {
   checkIsAdmin,
   createUserProfile,
@@ -21,23 +21,67 @@ let allMissionsCatalog = [];
 let assignmentUnsub = null;
 let missionDetailUnsubs = [];
 
-window.addEventListener("auth-ready", async (e) => {
-  if (currentUser) return; // só roda o setup uma vez
-  currentUser = e.detail.user;
+// ---------- Login exclusivo do admin ----------
+// Esta página NÃO reaproveita a sessão normal do app (não usa auth-guard.js):
+// toda vez que alguém abre admin.html, ela pede e-mail/senha de novo, e só
+// libera o conteúdo depois de duas checagens: (1) a senha bate no Firebase
+// Authentication de verdade, e (2) essa conta está marcada como admin no
+// Firestore (coleção admins/{uid}).
+const loginScreen = document.getElementById("admin-login-screen");
+const contentEl = document.getElementById("admin-content");
+const loginForm = document.getElementById("admin-login-form");
+const loginError = document.getElementById("admin-login-error");
+const loginBtn = document.getElementById("admin-login-btn");
 
-  const isAdmin = await checkIsAdmin(currentUser.uid);
-  if (!isAdmin) {
-    document.getElementById("admin-checking").innerHTML =
-      `<p class="missions-loading">Acesso restrito a administradores. Redirecionando...</p>`;
-    window.location.href = "index.html";
-    return;
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.hidden = true;
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Entrando...";
+
+  const email = document.getElementById("admin-email").value.trim();
+  const password = document.getElementById("admin-password").value;
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+
+    const isAdmin = await checkIsAdmin(cred.user.uid);
+    if (!isAdmin) {
+      await signOut(auth);
+      loginError.textContent = "Essa conta não tem permissão de administrador.";
+      loginError.hidden = false;
+      return;
+    }
+
+    currentUser = cred.user;
+    loginScreen.hidden = true;
+    contentEl.hidden = false;
+    document.getElementById("admin-session-email").textContent = currentUser.email;
+    init();
+  } catch (err) {
+    loginError.textContent = friendlyLoginError(err.code);
+    loginError.hidden = false;
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Entrar";
   }
-
-  document.getElementById("admin-checking").hidden = true;
-  document.getElementById("admin-content").hidden = false;
-
-  init();
 });
+
+document.getElementById("admin-logout-btn").addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.reload();
+});
+
+function friendlyLoginError(code) {
+  const map = {
+    "auth/invalid-credential": "E-mail ou senha incorretos.",
+    "auth/user-not-found": "Usuário não encontrado.",
+    "auth/wrong-password": "Senha incorreta.",
+    "auth/too-many-requests": "Muitas tentativas. Tente novamente mais tarde.",
+    "auth/invalid-email": "E-mail inválido.",
+  };
+  return map[code] || "Não foi possível entrar. Tente novamente.";
+}
 
 function init() {
   subscribeToAllUsers(renderUsersList);

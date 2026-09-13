@@ -353,6 +353,27 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 .profile-msg { text-align: center; font-size: 0.875rem; color: rgba(11,15,25,0.6); margin: 0; }
 
 /* ---------- Admin ---------- */
+.admin-session-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--brand-600);
+  color: white;
+  border-radius: var(--radius-xl);
+  padding: 0.875rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+.admin-session-badge .admin-btn-small {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.3);
+  color: white;
+}
+.admin-session-badge .admin-btn-small:hover {
+  background: rgba(255,255,255,0.25);
+}
 .admin-card-title {
   font-size: 0.9375rem;
   font-weight: 600;
