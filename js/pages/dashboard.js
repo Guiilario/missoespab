@@ -9,6 +9,7 @@ import {
   getCompletionsForToday,
   completeRepeatableMission,
   completeReferralMission,
+  uploadMissionPhoto,
 } from "../firestore.js";
 import { missionCardHtml } from "../mission-card.js";
 
@@ -44,6 +45,100 @@ const dailyDotsEl = document.getElementById("daily-dots");
 const dailyProgressLabelEl = document.getElementById("daily-progress-label");
 const celebrationSlot = document.getElementById("celebration-slot");
 const toastEl = document.getElementById("mission-toast");
+
+// ---- Modal de Adesivagem (injetado uma única vez) ----
+const modalOverlay = document.createElement("div");
+modalOverlay.id = "adesivagem-modal";
+modalOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
+modalOverlay.innerHTML = `
+  <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+    <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Comprovar Adesivagem</h3>
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      Local de adesivagem
+      <input type="text" id="modal-local" placeholder="Ex: Rua das Flores, 123" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+    </label>
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      Referência
+      <input type="text" id="modal-referencia" placeholder="Ex: Próximo ao mercado" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+    </label>
+    <label style="display:block;margin-bottom:1rem;font-size:.875rem;">
+      Foto do adesivo
+      <input type="file" id="modal-foto" accept="image/*" capture="environment" style="display:block;width:100%;margin-top:.25rem;font-size:.875rem;" />
+    </label>
+    <div id="modal-preview" style="display:none;margin-bottom:1rem;text-align:center;">
+      <img id="modal-preview-img" style="max-width:100%;max-height:200px;border-radius:.5rem;" />
+    </div>
+    <p id="modal-error" style="color:#d32f2f;font-size:.8rem;margin:0 0 .75rem;display:none;"></p>
+    <div style="display:flex;gap:.75rem;">
+      <button id="modal-cancel" style="flex:1;padding:.6rem;border:1px solid #ccc;background:transparent;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;">Cancelar</button>
+      <button id="modal-submit" style="flex:1;padding:.6rem;border:none;background:var(--brand);color:#fff;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;font-weight:600;">Enviar</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(modalOverlay);
+
+const modalFotoInput = document.getElementById("modal-foto");
+const modalPreview = document.getElementById("modal-preview");
+const modalPreviewImg = document.getElementById("modal-preview-img");
+modalFotoInput.addEventListener("change", () => {
+  const file = modalFotoInput.files[0];
+  if (file) {
+    modalPreview.style.display = "block";
+    modalPreviewImg.src = URL.createObjectURL(file);
+  } else {
+    modalPreview.style.display = "none";
+  }
+});
+
+let pendingAdesivagem = null; // { missionId, mission }
+
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  modalOverlay.style.display = "none";
+  pendingAdesivagem = null;
+});
+
+document.getElementById("modal-submit").addEventListener("click", async () => {
+  const local = document.getElementById("modal-local").value.trim();
+  const referencia = document.getElementById("modal-referencia").value.trim();
+  const file = modalFotoInput.files[0];
+  const errorEl = document.getElementById("modal-error");
+
+  if (!local || !referencia) {
+    errorEl.textContent = "Preencha o local e a referência.";
+    errorEl.style.display = "block";
+    return;
+  }
+  if (!file) {
+    errorEl.textContent = "Tire ou selecione uma foto do adesivo.";
+    errorEl.style.display = "block";
+    return;
+  }
+  errorEl.style.display = "none";
+
+  const submitBtn = document.getElementById("modal-submit");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Enviando...";
+
+  try {
+    const photoUrl = await uploadMissionPhoto(currentUser.uid, file);
+    const { missionId, mission } = pendingAdesivagem;
+    const proofData = { local, referencia, photoUrl };
+    await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, proofData);
+    completions[missionId] = true;
+    alert("Missão concluída!");
+    modalOverlay.style.display = "none";
+    renderMissionsList();
+    maybeCompleteDay();
+  } catch (err) {
+    console.error("Erro ao enviar adesivagem:", err);
+    errorEl.textContent = "Erro ao enviar. Tente novamente.";
+    errorEl.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Enviar";
+    pendingAdesivagem = null;
+  }
+});
 
 window.addEventListener("auth-ready", async (e) => {
   const { user, profile } = e.detail;
@@ -257,15 +352,23 @@ missionsListEl.addEventListener("click", async (e) => {
     }
   }
   
-  // Adesivagem (prompt)
-  let proofData = null;
+  // Adesivagem (modal com foto)
   if (titleLower.includes("adesivagem")) {
-    const local = prompt("Local de adesivagem:");
-    if (!local) return;
-    const ref = prompt("Referência:");
-    if (!ref) return;
-    proofData = { local, referencia: ref };
-  } else if (titleLower.includes("panfletagem")) {
+    // Abre o modal em vez de prompt()
+    pendingAdesivagem = { missionId, mission };
+    document.getElementById("modal-local").value = "";
+    document.getElementById("modal-referencia").value = "";
+    modalFotoInput.value = "";
+    modalPreview.style.display = "none";
+    document.getElementById("modal-error").style.display = "none";
+    document.getElementById("modal-submit").textContent = "Enviar";
+    document.getElementById("modal-submit").disabled = false;
+    modalOverlay.style.display = "flex";
+    return;
+  }
+  
+  let proofData = null;
+  if (titleLower.includes("panfletagem")) {
     proofData = { localInicio: activeTimers[missionId].local };
   }
 

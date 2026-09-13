@@ -266,6 +266,45 @@ export function subscribeToRanking(callback, topN = 50) {
   });
 }
 
+// ---------- UPLOAD DE FOTOS (Google Drive via Apps Script) ----------
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFoI_Sf_wdjVzMcsWISGrF6gLYbwH3ZEiku4bsygeRvQIeuM6Bh6Hn4GSXC-WbFLFT/exec";
+
+/**
+ * Faz upload de uma foto para o Google Drive via Google Apps Script.
+ * Converte o arquivo para base64 e envia via POST.
+ * Retorna a URL pública da imagem.
+ */
+export async function uploadMissionPhoto(uid, file) {
+  const base64 = await fileToBase64(file);
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      image: base64,
+      mimeType: file.type || "image/jpeg",
+      fileName: `${uid}_${Date.now()}_${file.name}`,
+    }),
+  });
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || "Falha no upload da foto.");
+  }
+  return result.url;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function completeRepeatableMission(uid, missionId, xpReward, proofData = null) {
   const date = todayKey();
   const timestamp = Date.now();
@@ -277,8 +316,12 @@ export async function completeRepeatableMission(uid, missionId, xpReward, proofD
   const userRef = doc(db, "users", uid);
 
   await runTransaction(db, async (tx) => {
+    // Todas as leituras primeiro (regra do Firestore)
     const existingDaily = await tx.get(dailyCompletionRef);
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) return;
 
+    // Agora todas as escritas
     tx.set(logRef, {
       uid,
       missionId,

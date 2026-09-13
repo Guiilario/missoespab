@@ -56,6 +56,17 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Logs de missões repetíveis (Adesivagem, Panfletagem, convites).
+    // Cada usuário só pode criar e ler seus próprios logs.
+    match /missionLogs/{logId} {
+      allow read: if request.auth != null &&
+        logId.matches(request.auth.uid + '_.*');
+      allow create: if request.auth != null &&
+        logId.matches(request.auth.uid + '_.*') &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // Voluntários indicados por um usuário, cadastrados pela própria pessoa
     // convidada através do link público (convite.html) — por isso a escrita
     // não exige login. Cada usuário só pode LER os voluntários que ele mesmo
