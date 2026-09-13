@@ -1,272 +1,58 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paulo Alexandre Barbosa - Deputado Federal | Faça Parte da Campanha</title>
-  <meta name="description" content="Faça parte da campanha do Paulo Alexandre Barbosa para Deputado Federal. Acesse jingles, figurinhas, banners e molduras para suas redes sociais.">
-  <meta name="keywords" content="Paulo Alexandre Barbosa, PAB, Deputado Federal, Campanha, Eleições">
-  <meta property="og:title" content="Paulo Alexandre Barbosa - Deputado Federal">
-  <meta property="og:description" content="Faça parte da campanha! Acesse materiais exclusivos para suas redes sociais.">
-  <meta property="og:type" content="website">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A33E1" />
+  <title>Hoje — Missões</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <div id="nav-top"></div>
 
-  <!-- ========== PRELOADER ========== -->
-  <div id="preloader">
-    <div class="preloader-content">
-      <div class="preloader-ring">
-        <div class="preloader-ring-inner"></div>
-      </div>
-      <span class="preloader-text">PAB</span>
-    </div>
-  </div>
-
-  <!-- ========== HERO SECTION ========== -->
-  <section class="hero" id="hero">
-    <div class="hero-bg-shapes" id="hero-bg-shapes"></div>
-    <div class="hero-gradient-overlay"></div>
-
-    <div class="hero-wrapper">
-      <div class="hero-image-container">
-        <img 
-          src="assets/hero.png" 
-          alt="Paulo Alexandre Barbosa - Faça Parte da Campanha" 
-          class="hero-image"
-          id="hero-img"
-        >
-        <div class="hero-image-glow"></div>
-      </div>
-
-      <div class="hero-buttons" id="hero-buttons">
-        <button class="btn-campaign" data-modal="jingles" id="btn-jingles">
-          <span class="btn-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </span>
-          <span class="btn-label">JINGLES</span>
-        </button>
-        <button class="btn-campaign" data-modal="figurinhas" id="btn-figurinhas">
-          <span class="btn-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          </span>
-          <span class="btn-label">FIGURINHAS</span>
-        </button>
-        <button class="btn-campaign" data-modal="banners" id="btn-banners">
-          <span class="btn-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </span>
-          <span class="btn-label">BANNERS</span>
-        </button>
-        <button class="btn-campaign" data-modal="molduras" id="btn-molduras">
-          <span class="btn-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          </span>
-          <span class="btn-label">MOLDURAS</span>
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== MODAL: JINGLES ========== -->
-  <div class="modal-overlay" id="modal-jingles" aria-hidden="true" role="dialog" aria-label="Jingles da campanha">
-    <div class="modal-container modal-sm">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          <h2>Jingles</h2>
-        </div>
-        <button class="modal-close" aria-label="Fechar">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="jingles-list" id="jingles-list">
-          <div class="jingle-card">
-            <div class="jingle-info">
-              <div class="jingle-waveform">
-                <span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
-              <p class="jingle-name">Jingle Oficial - PAB Deputado Federal</p>
-            </div>
-            <div class="jingle-actions">
-              <audio id="jingle-audio-1" preload="metadata">
-                <source src="" type="audio/mpeg">
-              </audio>
-              <button class="btn-play" data-audio="jingle-audio-1" id="play-btn-1">
-                <svg class="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-              </button>
-              <a class="btn-download-sm" href="#" download="jingle-pab.mp3" id="jingle-download-1">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </a>
-            </div>
+  <main class="app-main">
+    <div class="header-card">
+      <div class="header-top">
+        <div class="header-user">
+          <div class="header-avatar">
+            <img src="assets/avatar-default.svg" alt="" />
           </div>
-          <p class="jingles-placeholder">Mais jingles em breve!</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== MODAL: FIGURINHAS ========== -->
-  <div class="modal-overlay" id="modal-figurinhas" aria-hidden="true" role="dialog" aria-label="Figurinhas da campanha">
-    <div class="modal-container modal-md">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <h2>Figurinhas</h2>
-        </div>
-        <button class="modal-close" aria-label="Fechar">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-description">Baixe as figurinhas e use no WhatsApp!</p>
-        <div class="media-grid" id="figurinhas-grid">
-          <div class="media-card placeholder-card">
-            <div class="placeholder-icon">📱</div>
-            <p>Figurinhas em breve!</p>
+          <div>
+            <p class="header-name font-display" id="header-name">Carregando...</p>
+            <p class="header-username" id="header-username">@usuario</p>
           </div>
         </div>
+        <div class="header-streak">🔥 <span id="header-streak">0</span> dias</div>
+      </div>
+
+      <div class="header-level-row">
+        <span class="header-level font-display" id="header-level">Nível 01</span>
+        <span class="header-xp-label" id="header-xp-label">0 / 0 XP</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="header-progress-fill" style="width: 0%"></div>
       </div>
     </div>
-  </div>
 
-  <!-- ========== MODAL: BANNERS ========== -->
-  <div class="modal-overlay" id="modal-banners" aria-hidden="true" role="dialog" aria-label="Banners da campanha">
-    <div class="modal-container modal-lg">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <h2>Banners</h2>
-        </div>
-        <button class="modal-close" aria-label="Fechar">&times;</button>
+    <div class="card section-gap">
+      <div class="daily-progress-head">
+        <h2 class="font-display">Missões de hoje</h2>
+        <span id="daily-progress-label">0 de 3 concluídas</span>
       </div>
-      <div class="modal-body">
-        <p class="modal-description">Baixe os banners para usar nas suas redes sociais!</p>
-        <div class="media-grid media-grid-banners" id="banners-grid">
-          <div class="media-card placeholder-card">
-            <div class="placeholder-icon">🖼️</div>
-            <p>Banners em breve!</p>
-          </div>
-        </div>
-      </div>
+      <div class="daily-dots" id="daily-dots"></div>
     </div>
-  </div>
 
-  <!-- ========== MODAL: MOLDURAS (TWIBBONIZE) ========== -->
-  <div class="modal-overlay" id="modal-molduras" aria-hidden="true" role="dialog" aria-label="Molduras - Ative o Modo PAB">
-    <div class="modal-container modal-xl">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <h2>Molduras</h2>
-        </div>
-        <button class="modal-close" aria-label="Fechar">&times;</button>
-      </div>
-      <div class="modal-body molduras-body">
-        <div class="molduras-layout">
-          <!-- Sidebar: Frame Selection -->
-          <div class="molduras-sidebar">
-            <h3 class="molduras-sidebar-title">Escolha sua moldura</h3>
-            <div class="molduras-options" id="molduras-options">
-              <!-- Moldura options will be populated by JS -->
-              <div class="moldura-placeholder-msg">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                <p>Molduras serão adicionadas em breve</p>
-              </div>
-            </div>
-          </div>
+    <div id="celebration-slot"></div>
 
-          <!-- Editor: Canvas + Controls -->
-          <div class="molduras-editor">
-            <div class="molduras-canvas-container" id="canvas-container">
-              <canvas id="molduras-canvas"></canvas>
-              
-              <!-- Upload Overlay -->
-              <div class="molduras-upload-overlay" id="upload-overlay">
-                <div class="upload-dropzone" id="upload-dropzone">
-                  <div class="upload-icon-wrapper">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  </div>
-                  <p class="upload-title">Arraste sua foto aqui</p>
-                  <p class="upload-subtitle">ou clique para selecionar</p>
-                  <span class="upload-formats">JPG, PNG ou WebP</span>
-                </div>
-                <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" hidden>
-              </div>
-
-              <!-- Drag hint (shown after photo upload) -->
-              <div class="drag-hint" id="drag-hint" hidden>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
-                Arraste para ajustar • Scroll para zoom
-              </div>
-            </div>
-
-            <!-- Controls -->
-            <div class="molduras-controls" id="molduras-controls" hidden>
-              <div class="zoom-control">
-                <button class="zoom-btn" id="zoom-out" aria-label="Diminuir zoom">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <input type="range" id="zoom-slider" min="10" max="400" value="100" class="zoom-range">
-                <button class="zoom-btn" id="zoom-in" aria-label="Aumentar zoom">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-              </div>
-              <div class="control-buttons">
-                <button class="btn-secondary" id="btn-reset">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                  Resetar
-                </button>
-                <button class="btn-secondary" id="btn-change-photo">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Trocar foto
-                </button>
-              </div>
-            </div>
-
-            <!-- Activate Button -->
-            <button class="btn-activate" id="btn-activate" disabled>
-              <span class="btn-activate-icon">⚡</span>
-              <span class="btn-activate-text">ATIVAR O MODO PAB</span>
-            </button>
-
-            <!-- Download Section (Full screen overlay) -->
-            <div class="download-section" id="download-section" hidden>
-              <div class="download-inner">
-                <div class="download-success">
-                  <div class="success-check">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  </div>
-                  <p class="download-title">Modo PAB Ativado! 🎉</p>
-                  <p class="download-subtitle">Sua imagem está pronta para download</p>
-                </div>
-                <a class="btn-download" id="btn-download-result" download="meu-modo-pab.png">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  BAIXAR IMAGEM EM ALTA QUALIDADE
-                </a>
-                <button class="btn-secondary" id="btn-close-download" style="margin-top: 8px; color: rgba(255,255,255,0.5);">
-                  Voltar ao editor
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="missions-list" id="missions-list">
+      <p class="missions-loading">Carregando missões...</p>
     </div>
-  </div>
+    <p class="profile-msg" id="mission-toast" hidden></p>
+  </main>
 
-  <!-- ========== FOOTER ========== -->
-  <footer class="footer">
-    <div class="footer-content">
-      <p>Paulo Alexandre Barbosa &bull; Deputado Federal</p>
-      <p class="footer-sub">Faça parte da campanha</p>
-    </div>
-  </footer>
+  <div id="nav-bottom"></div>
 
-  <script src="app.js"></script>
-  <script src="molduras.js"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <script type="module" src="js/pages/dashboard.js"></script>
 </body>
 </html>
