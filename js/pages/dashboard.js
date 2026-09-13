@@ -7,6 +7,8 @@ import {
   completeMission,
   markDayCompleted,
   getCompletionsForToday,
+  completeRepeatableMission,
+  completeReferralMission,
 } from "../firestore.js";
 import { missionCardHtml } from "../mission-card.js";
 
@@ -34,6 +36,9 @@ let missionUnsubs = [];
 let busyMissionId = null;
 let dayJustCelebrated = false;
 
+// Estado local para timers da Panfletagem
+let activeTimers = {}; // { missionId: { endTime: number, intervalId: number } }
+
 const missionsListEl = document.getElementById("missions-list");
 const dailyDotsEl = document.getElementById("daily-dots");
 const dailyProgressLabelEl = document.getElementById("daily-progress-label");
@@ -55,12 +60,14 @@ window.addEventListener("auth-ready", async (e) => {
 
     subscribeToDailyAssignment(onAssignmentChange);
 
-    // Detecta em tempo real quando alguém se cadastra pelo link deste
-    // usuário hoje, e completa a missão permanente automaticamente.
+    // Detecta em tempo real quando alguém se cadastra pelo link deste usuário.
+    // Como a missão é permanente, ganha XP a cada convite.
     subscribeToTodayReferrals(user.uid, async (referrals) => {
-      if (referrals.length > 0 && !completions[PERMANENT_MISSION.id]) {
-        await completeMission(user.uid, PERMANENT_MISSION.id, PERMANENT_MISSION.xpReward);
-        completions[PERMANENT_MISSION.id] = true;
+      if (referrals.length > 0) {
+        for (const referral of referrals) {
+          await completeReferralMission(user.uid, referral.id, PERMANENT_MISSION.xpReward);
+        }
+        completions[PERMANENT_MISSION.id] = true; // Para progresso visual se necessário (embora não feche a missão permanente)
         renderMissionsList();
         maybeCompleteDay();
       }
@@ -134,9 +141,10 @@ function renderMissionsList() {
   const permanentCardHtml = missionCardHtml({
     index: 0,
     mission: PERMANENT_MISSION,
-    status: completions[PERMANENT_MISSION.id] ? "completed" : "available",
+    status: "available", // Sempre disponível para repetir
     busy: busyMissionId === PERMANENT_MISSION.id,
     actionLabel: "Copiar link de convite",
+    customEyebrow: "Missão Permanente"
   });
 
   let adminCardsHtml = "";
@@ -145,8 +153,37 @@ function renderMissionsList() {
       .map((id, i) => {
         const mission = adminMissions[id];
         if (!mission) return "";
-        const status = completions[id] ? "completed" : "available";
-        return missionCardHtml({ index: i + 1, mission, status, busy: busyMissionId === id });
+        
+        let status = completions[id] ? "completed" : "available";
+        const titleLower = (mission.title || "").toLowerCase();
+        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem");
+        if (isRepeatable) {
+          status = "available"; // Nunca bloqueia visualmente se pode repetir
+        }
+        
+        let busy = busyMissionId === id;
+        let actionLabel = undefined;
+        
+        const timer = activeTimers[id];
+        if (timer) {
+          const now = Date.now();
+          if (now < timer.endTime) {
+            busy = true;
+            const remainingMins = Math.ceil((timer.endTime - now) / 60000);
+            actionLabel = `Aguarde... (${remainingMins}m)`;
+          } else {
+            actionLabel = "Concluir (Tempo esgotado)";
+          }
+        }
+        
+        return missionCardHtml({ 
+          index: i + 1, 
+          mission, 
+          status, 
+          busy, 
+          actionLabel,
+          customEyebrow: "Missão Diária"
+        });
       })
       .join("");
   }
@@ -170,11 +207,61 @@ missionsListEl.addEventListener("click", async (e) => {
   const mission = adminMissions[missionId];
   if (!mission) return;
 
+  const titleLower = (mission.title || "").toLowerCase();
+  
+  // Timer de panfletagem
+  if (titleLower.includes("panfletagem")) {
+    const timer = activeTimers[missionId];
+    if (!timer) {
+      const local = prompt("Local que irá iniciar a panfletagem:");
+      if (!local) return;
+      
+      const endTime = Date.now() + 60 * 60 * 1000; // 1 hora
+      activeTimers[missionId] = { endTime, local };
+      
+      const intervalId = setInterval(() => {
+        if (Date.now() >= endTime) {
+          clearInterval(intervalId);
+        }
+        renderMissionsList();
+      }, 60000); // Atualiza a cada 1 minuto
+      
+      activeTimers[missionId].intervalId = intervalId;
+      renderMissionsList();
+      return;
+    } else {
+      if (Date.now() < timer.endTime) {
+        return; // ainda rodando, nao deveria ser clicável (pois ta busy) mas só garantindo
+      }
+      // Se passou o tempo, vai completar normal
+    }
+  }
+  
+  // Adesivagem (prompt)
+  let proofData = null;
+  if (titleLower.includes("adesivagem")) {
+    const local = prompt("Local de adesivagem:");
+    if (!local) return;
+    const ref = prompt("Referência:");
+    if (!ref) return;
+    proofData = { local, referencia: ref };
+  } else if (titleLower.includes("panfletagem")) {
+    proofData = { localInicio: activeTimers[missionId].local };
+  }
+
   busyMissionId = missionId;
   renderMissionsList();
 
   try {
-    await completeMission(currentUser.uid, missionId, mission.xpReward);
+    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem");
+    if (isRepeatable) {
+      await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, proofData);
+      if (titleLower.includes("panfletagem")) {
+        delete activeTimers[missionId];
+      }
+    } else {
+      await completeMission(currentUser.uid, missionId, mission.xpReward);
+    }
     completions[missionId] = true;
   } finally {
     busyMissionId = null;

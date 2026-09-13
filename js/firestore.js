@@ -265,3 +265,66 @@ export function subscribeToRanking(callback, topN = 50) {
     callback(rows);
   });
 }
+
+export async function completeRepeatableMission(uid, missionId, xpReward, proofData = null) {
+  const date = todayKey();
+  const timestamp = Date.now();
+  const completionId = `${uid}_${missionId}_${date}_${timestamp}`;
+  const dailyCompletionId = `${uid}_${missionId}_${date}`;
+  
+  const dailyCompletionRef = doc(db, "missionCompletions", dailyCompletionId);
+  const logRef = doc(db, "missionLogs", completionId);
+  const userRef = doc(db, "users", uid);
+
+  await runTransaction(db, async (tx) => {
+    tx.set(logRef, {
+      uid,
+      missionId,
+      date,
+      xpAwarded: xpReward,
+      proofData,
+      completedAt: serverTimestamp(),
+    });
+    
+    tx.update(userRef, {
+      totalXp: increment(xpReward),
+      completedMissionsCount: increment(1),
+    });
+
+    const existingDaily = await tx.get(dailyCompletionRef);
+    if (!existingDaily.exists()) {
+      tx.set(dailyCompletionRef, {
+        uid,
+        missionId,
+        date,
+        xpAwarded: 0,
+        completedAt: serverTimestamp(),
+      });
+    }
+  });
+}
+
+export async function completeReferralMission(inviterUid, referralId, xpReward) {
+  const date = todayKey();
+  const logId = `${inviterUid}_referral_${referralId}`;
+  const logRef = doc(db, "missionLogs", logId);
+  const userRef = doc(db, "users", inviterUid);
+
+  await runTransaction(db, async (tx) => {
+    const existing = await tx.get(logRef);
+    if (existing.exists()) return;
+
+    tx.set(logRef, {
+      uid: inviterUid,
+      referralId,
+      date,
+      xpAwarded: xpReward,
+      completedAt: serverTimestamp(),
+    });
+
+    tx.update(userRef, {
+      totalXp: increment(xpReward),
+      completedMissionsCount: increment(1),
+    });
+  });
+}

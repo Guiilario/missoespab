@@ -15,7 +15,7 @@ const CHECK_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
  * Retorna o HTML de um card de missão.
  * status: "available" | "in_progress" | "pending_validation" | "completed" | "expired"
  */
-export function missionCardHtml({ index, mission, status, busy, actionLabel }) {
+export function missionCardHtml({ index, mission, status, busy, actionLabel, customEyebrow }) {
   const isCompleted = status === "completed";
   const isExpired = status === "expired";
   const isPending = status === "pending_validation";
@@ -43,7 +43,7 @@ export function missionCardHtml({ index, mission, status, busy, actionLabel }) {
   }" data-mission-card="${mission.id}">
       <div class="mission-card-top">
         <div class="mission-card-text">
-          <p class="mission-eyebrow">Missão ${String(index + 1).padStart(2, "0")}</p>
+          <p class="mission-eyebrow">${customEyebrow ? escapeHtml(customEyebrow) : `Missão ${String(index + 1).padStart(2, "0")}`}</p>
           <h3 class="mission-title">${escapeHtml(mission.title)}</h3>
           <p class="mission-desc">${escapeHtml(mission.description)}</p>
         </div>
