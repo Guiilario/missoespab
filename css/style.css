@@ -389,10 +389,11 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 }
 .admin-inline-form {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
 .admin-inline-form select {
-  flex: 1;
+  width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid rgba(0,0,0,0.1);
   border-radius: 0.75rem;
@@ -401,8 +402,23 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   min-height: 48px;
 }
 .admin-inline-form button {
+  width: 100%;
   flex-shrink: 0;
-  padding: 0 1.25rem;
+  white-space: nowrap;
+}
+@media (min-width: 480px) {
+  .admin-inline-form {
+    flex-direction: row;
+  }
+  .admin-inline-form select {
+    flex: 1;
+    width: auto;
+  }
+  .admin-inline-form button {
+    width: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
 }
 .field select {
   width: 100%;

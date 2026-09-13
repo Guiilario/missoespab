@@ -58,7 +58,7 @@ loginForm.addEventListener("submit", async (e) => {
     }
 
     currentUser = cred.user;
-    loginScreen.hidden = true;
+    loginScreen.style.display = "none";
     contentEl.hidden = false;
     document.getElementById("admin-session-email").textContent = currentUser.email;
     init();
