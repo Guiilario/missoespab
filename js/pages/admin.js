@@ -45,7 +45,11 @@ loginForm.addEventListener("submit", async (e) => {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
 
-    const isAdmin = await checkIsAdmin(cred.user.uid);
+    // Logo após o login, o Firestore às vezes ainda não "recebeu" o token
+    // novo (race condition rara mas real) e recusa a próxima leitura por
+    // permissão mesmo com tudo certo. Se isso acontecer, espera um instante
+    // e tenta de novo antes de desistir.
+    const isAdmin = await checkIsAdminWithRetry(cred.user.uid);
     if (!isAdmin) {
       await signOut(auth);
       loginError.textContent = "Essa conta não tem permissão de administrador.";
@@ -59,6 +63,7 @@ loginForm.addEventListener("submit", async (e) => {
     document.getElementById("admin-session-email").textContent = currentUser.email;
     init();
   } catch (err) {
+    console.error("Erro no login do admin:", err);
     loginError.textContent = friendlyLoginError(err.code);
     loginError.hidden = false;
   } finally {
@@ -66,6 +71,18 @@ loginForm.addEventListener("submit", async (e) => {
     loginBtn.textContent = "Entrar";
   }
 });
+
+async function checkIsAdminWithRetry(uid, attempts = 3) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await checkIsAdmin(uid);
+    } catch (err) {
+      const isLastAttempt = i === attempts - 1;
+      if (err.code !== "permission-denied" || isLastAttempt) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }
+}
 
 document.getElementById("admin-logout-btn").addEventListener("click", async () => {
   await signOut(auth);
