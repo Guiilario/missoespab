@@ -60,7 +60,7 @@ service cloud.firestore {
     // Cada usuário só pode criar e ler seus próprios logs.
     match /missionLogs/{logId} {
       allow read: if request.auth != null &&
-        (logId.matches(request.auth.uid + '_.*') || isAdmin());
+        (isAdmin() || logId.matches(request.auth.uid + '_.*'));
       allow create: if request.auth != null &&
         logId.matches(request.auth.uid + '_.*') &&
         request.resource.data.uid == request.auth.uid;

@@ -287,7 +287,7 @@ async function openUserDetails(uid, user) {
       `;
     }).join("");
   } catch (err) {
-    userModalLogs.innerHTML = `<p style="color:red;font-size:0.875rem;">Erro ao buscar histórico.</p>`;
+    userModalLogs.innerHTML = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
     console.error(err);
   }
 }
