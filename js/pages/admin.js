@@ -235,6 +235,10 @@ const userModalName = document.getElementById("user-modal-name");
 const userModalInfo = document.getElementById("user-modal-info");
 const userModalLogs = document.getElementById("user-modal-logs");
 
+let currentUserLogs = [];
+let currentPage = 1;
+const LOGS_PER_PAGE = 4;
+
 document.getElementById("user-modal-close")?.addEventListener("click", () => {
   userModal.style.display = "none";
 });
@@ -246,50 +250,113 @@ async function openUserDetails(uid, user) {
   userModal.style.display = "flex";
 
   try {
-    const logs = await getMissionLogsForUser(uid);
-    if (!logs.length) {
-      userModalLogs.innerHTML = `<p class="missions-loading">Nenhuma missão concluída.</p>`;
-      return;
-    }
-
-    userModalLogs.innerHTML = logs.map((log) => {
-      const mission = allMissionsCatalog.find((m) => m.id === log.missionId);
-      const title = mission ? mission.title : log.missionId;
-      const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
-      
-      let proofHtml = "";
-      if (log.proofData) {
-        proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
-        if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
-        if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
-        if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
-        if (log.proofData.photoUrl) {
-          proofHtml += `<a href="${log.proofData.photoUrl}" target="_blank" style="display:inline-block;margin-top:0.5rem;color:var(--brand);text-decoration:none;font-weight:600;">Ver Foto &rarr;</a>`;
-        }
-        proofHtml += `</div>`;
-      } else if (log.referralId) {
-         proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
-         proofHtml += `<p style="margin:0;">Convite de voluntário</p>`;
-         proofHtml += `</div>`;
-      }
-
-      return `
-        <div style="border-bottom:1px solid #eee;padding:1rem 0;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-            <div>
-              <strong style="display:block;margin-bottom:0.25rem;">${escapeHtml(title)}</strong>
-              <span style="font-size:0.75rem;color:#666;">${dateStr}</span>
-            </div>
-            <span style="font-size:0.875rem;font-weight:600;color:var(--mint);">+${log.xpAwarded} XP</span>
-          </div>
-          ${proofHtml}
-        </div>
-      `;
-    }).join("");
+    currentUserLogs = await getMissionLogsForUser(uid);
+    currentPage = 1;
+    renderLogsPage();
   } catch (err) {
     userModalLogs.innerHTML = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
     console.error(err);
   }
+}
+
+function renderLogsPage() {
+  if (!currentUserLogs.length) {
+    userModalLogs.innerHTML = `<p class="missions-loading">Nenhuma missão concluída.</p>`;
+    return;
+  }
+
+  const startIndex = (currentPage - 1) * LOGS_PER_PAGE;
+  const pageLogs = currentUserLogs.slice(startIndex, startIndex + LOGS_PER_PAGE);
+
+  let html = pageLogs.map((log) => {
+    const mission = allMissionsCatalog.find((m) => m.id === log.missionId);
+    const title = mission ? mission.title : log.missionId;
+    const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
+    
+    let proofHtml = "";
+    if (log.proofData) {
+      proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
+      if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
+      if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
+      if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
+      if (log.proofData.photoUrl) {
+        proofHtml += `<button type="button" class="btn-view-photo" data-url="${log.proofData.photoUrl}" style="margin-top:0.5rem;color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Foto &rarr;</button>`;
+      }
+      proofHtml += `</div>`;
+    } else if (log.referralId) {
+       proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
+       proofHtml += `<p style="margin:0;">Convite de voluntário</p>`;
+       proofHtml += `</div>`;
+    }
+
+    return `
+      <div style="border-bottom:1px solid #eee;padding:1rem 0;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <strong style="display:block;margin-bottom:0.25rem;">${escapeHtml(title)}</strong>
+            <span style="font-size:0.75rem;color:#666;">${dateStr}</span>
+          </div>
+          <span style="font-size:0.875rem;font-weight:600;color:var(--mint);">+${log.xpAwarded} XP</span>
+        </div>
+        ${proofHtml}
+      </div>
+    `;
+  }).join("");
+
+  // Paginação
+  const totalPages = Math.ceil(currentUserLogs.length / LOGS_PER_PAGE);
+  if (totalPages > 1) {
+    html += `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+        <button type="button" id="logs-prev" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer;color:var(--brand);background:none;border:none;font-weight:600;"'}>&larr; Anterior</button>
+        <span style="font-size:0.875rem;color:#666;">Página ${currentPage} de ${totalPages}</span>
+        <button type="button" id="logs-next" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer;color:var(--brand);background:none;border:none;font-weight:600;"'}>Próxima &rarr;</button>
+      </div>
+    `;
+  }
+
+  userModalLogs.innerHTML = html;
+
+  document.getElementById("logs-prev")?.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderLogsPage();
+    }
+  });
+
+  document.getElementById("logs-next")?.addEventListener("click", () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderLogsPage();
+    }
+  });
+
+  // Popup de fotos
+  const photoBtns = userModalLogs.querySelectorAll(".btn-view-photo");
+  photoBtns.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const url = e.target.dataset.url;
+      openPhotoPopup(url);
+    });
+  });
+}
+
+function openPhotoPopup(url) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;padding:1rem;";
+  overlay.innerHTML = `
+    <div style="position:relative;max-width:100%;max-height:100%;display:flex;flex-direction:column;align-items:center;">
+      <button style="position:absolute;top:-2rem;right:0;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;">&times;</button>
+      <img src="${url}" style="max-width:100%;max-height:85vh;border-radius:0.5rem;box-shadow:0 10px 25px rgba(0,0,0,0.5);" />
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  overlay.addEventListener("click", (e) => {
+    if (e.target.tagName !== 'IMG') {
+      overlay.remove();
+    }
+  });
 }
 
 // ---------- Missão do dia ----------

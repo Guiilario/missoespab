@@ -61,10 +61,12 @@ modalOverlay.innerHTML = `
       Referência
       <input type="text" id="modal-referencia" placeholder="Ex: Próximo ao mercado" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
     </label>
-    <label style="display:block;margin-bottom:1rem;font-size:.875rem;">
-      Foto do adesivo
-      <input type="file" id="modal-foto" accept="image/*" capture="environment" style="display:block;width:100%;margin-top:.25rem;font-size:.875rem;" />
-    </label>
+    <div style="margin-bottom:1rem;">
+      <label for="modal-foto" style="display:block;width:100%;padding:0.75rem;background:#eee;color:#333;text-align:center;border-radius:0.5rem;font-size:0.875rem;font-weight:600;cursor:pointer;border:1px solid #ccc;font-family:var(--font-body);">
+        📷 Registrar com foto
+      </label>
+      <input type="file" id="modal-foto" accept="image/*" capture="environment" style="display:none;" />
+    </div>
     <div id="modal-preview" style="display:none;margin-bottom:1rem;text-align:center;">
       <img id="modal-preview-img" style="max-width:100%;max-height:200px;border-radius:.5rem;" />
     </div>
