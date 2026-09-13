@@ -6,13 +6,13 @@ import {
   subscribeToAllUsers,
   setUserDisabled,
   subscribeToAllMissions,
+  createMission,
   assignMissionToDate,
   removeMissionFromDate,
   subscribeToAssignmentForDate,
   subscribeToMission,
   todayKey,
   getMissionLogsForUser,
-  getDocs,
 } from "../firestore.js";
 
 renderNav("admin"); // não corresponde a nenhum item da nav — fica sem destaque
