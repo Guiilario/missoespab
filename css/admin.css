@@ -11,6 +11,7 @@
   min-height: 100vh;
   color: #0B0F19;
   font-family: var(--font-body);
+  --ink: #0B0F19; /* Evita que a variável global --ink branca afete os cards do admin */
 }
 
 /* ---------- Login screen ---------- */
