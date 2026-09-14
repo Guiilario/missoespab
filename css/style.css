@@ -31,6 +31,26 @@ html, body {
   font-family: var(--font-body);
 }
 
+/* Restaura o tema claro original apenas para a página do admin */
+body.admin-body {
+  background: #F9FAFB;
+  color: #0B0F19;
+}
+body.admin-body input,
+body.admin-body select,
+body.admin-body textarea {
+  color: #0B0F19;
+}
+body.admin-body .field label,
+body.admin-body .admin-field label,
+body.admin-body .admin-card-label {
+  color: #0B0F19;
+}
+body.admin-body .auth-header p,
+body.admin-body .admin-section-desc {
+  color: rgba(11,15,25,0.6);
+}
+
 .font-display { font-family: var(--font-display); }
 
 ::selection { background: var(--brand); color: white; }
