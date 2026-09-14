@@ -1,4 +1,4 @@
-import { auth, signInWithEmailAndPassword, signOut, createUserAsAdmin } from "../firebase.js";
+import { auth, firebaseConfig, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserAsAdmin } from "../firebase.js";
 import {
   checkIsAdmin,
   createUserProfile,
@@ -58,6 +58,53 @@ const loginForm = document.getElementById("admin-login-form");
 const loginError = document.getElementById("admin-login-error");
 const loginBtn = document.getElementById("admin-login-btn");
 
+let adminInitialized = false;
+
+/**
+ * Verifica se o uid é admin via REST API do Firestore.
+ * Usa o idToken diretamente, contornando qualquer delay de propagação do SDK.
+ */
+async function checkIsAdminREST(uid, idToken) {
+  const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/admins/${uid}`;
+  const res = await fetch(url, {
+    headers: { "Authorization": `Bearer ${idToken}` },
+  });
+  if (res.status === 404) return false;       // documento não existe
+  if (res.status === 403) return false;        // sem permissão (não é admin)
+  if (!res.ok) return false;                   // qualquer outro erro
+  return true;                                 // documento existe → é admin
+}
+
+/**
+ * Ativa o painel do admin (esconde login, mostra conteúdo).
+ */
+function activateAdminPanel(user) {
+  if (adminInitialized) return;                // evita init duplicado
+  adminInitialized = true;
+  currentUser = user;
+  loginScreen.style.display = "none";
+  contentEl.hidden = false;
+  document.getElementById("admin-session-email").textContent = user.email;
+  init();
+}
+
+// Auto-login: se o admin já estava logado (sessão persistida), entra direto
+onAuthStateChanged(auth, async (user) => {
+  if (!user || adminInitialized) return;
+  try {
+    const idToken = await user.getIdToken(true);
+    const isAdmin = await checkIsAdminREST(user.uid, idToken);
+    if (isAdmin) {
+      activateAdminPanel(user);
+    } else {
+      // Usuário logado mas não é admin — faz signOut silencioso
+      await signOut(auth);
+    }
+  } catch (err) {
+    console.warn("Auto-login admin falhou:", err);
+  }
+});
+
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   loginError.hidden = true;
@@ -68,21 +115,34 @@ loginForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("admin-password").value;
 
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    // 1. Autentica via REST para obter o idToken sem depender do SDK
+    const signInUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseConfig.apiKey}`;
+    const signInRes = await fetch(signInUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    });
+    const signInData = await signInRes.json();
 
-    const isAdmin = await checkIsAdminWithRetry(cred.user.uid);
+    if (!signInRes.ok) {
+      const code = signInData.error?.message || "";
+      throw { code: restErrorToAuthCode(code) };
+    }
+
+    const uid = signInData.localId;
+    const idToken = signInData.idToken;
+
+    // 2. Verifica se é admin via REST (idToken já está disponível)
+    const isAdmin = await checkIsAdminREST(uid, idToken);
     if (!isAdmin) {
-      await signOut(auth);
       loginError.textContent = "Essa conta não tem permissão de administrador.";
       loginError.hidden = false;
       return;
     }
 
-    currentUser = cred.user;
-    loginScreen.style.display = "none";
-    contentEl.hidden = false;
-    document.getElementById("admin-session-email").textContent = currentUser.email;
-    init();
+    // 3. Agora sim faz o login no SDK (para que os listeners do Firestore funcionem)
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    activateAdminPanel(cred.user);
   } catch (err) {
     console.error("Erro no login do admin:", err);
     loginError.textContent = friendlyLoginError(err.code);
@@ -93,22 +153,19 @@ loginForm.addEventListener("submit", async (e) => {
   }
 });
 
-async function checkIsAdminWithRetry(uid, attempts = 3) {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await checkIsAdmin(uid);
-    } catch (err) {
-      const isLastAttempt = i === attempts - 1;
-      if (err.code !== "permission-denied" || isLastAttempt) throw err;
-      await new Promise((resolve) => setTimeout(resolve, 400));
-    }
-  }
-}
-
 document.getElementById("admin-logout-btn").addEventListener("click", async () => {
   await signOut(auth);
   window.location.reload();
 });
+
+function restErrorToAuthCode(msg) {
+  if (msg.includes("EMAIL_NOT_FOUND")) return "auth/user-not-found";
+  if (msg.includes("INVALID_PASSWORD")) return "auth/wrong-password";
+  if (msg.includes("INVALID_LOGIN_CREDENTIALS")) return "auth/invalid-credential";
+  if (msg.includes("TOO_MANY_ATTEMPTS")) return "auth/too-many-requests";
+  if (msg.includes("INVALID_EMAIL")) return "auth/invalid-email";
+  return "auth/unknown";
+}
 
 function friendlyLoginError(code) {
   const map = {
