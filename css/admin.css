@@ -699,6 +699,23 @@
   background: rgba(11,15,25,0.1);
 }
 
+/* Modal Tabs (Light Background) */
+#user-modal-tabs {
+  background: transparent;
+}
+#user-modal-tabs .admin-tab {
+  color: rgba(11, 15, 25, 0.5);
+}
+#user-modal-tabs .admin-tab:hover {
+  color: rgba(11, 15, 25, 0.8);
+  background: rgba(11, 15, 25, 0.04);
+}
+#user-modal-tabs .admin-tab.active {
+  color: var(--brand-600, #0A33E1);
+  border-bottom-color: var(--brand-600, #0A33E1);
+  background: rgba(10, 51, 225, 0.06);
+}
+
 /* ---------- Desktop responsive tweaks ---------- */
 @media (min-width: 768px) {
   .admin-header {

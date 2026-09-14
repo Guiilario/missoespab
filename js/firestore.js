@@ -68,9 +68,21 @@ export function subscribeToAllUsers(callback) {
 
 /** Retorna todos os logs de missões concluídas por um usuário (para o admin). */
 export async function getMissionLogsForUser(uid) {
-  const q = query(collection(db, "missionLogs"), where("uid", "==", uid));
-  const snap = await getDocs(q);
-  const logs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Pega logs detalhados (missões com foto e indicações)
+  const qLogs = query(collection(db, "missionLogs"), where("uid", "==", uid));
+  const snapLogs = await getDocs(qLogs);
+  let logs = snapLogs.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  // Pega missões diárias simples
+  const qCompletions = query(collection(db, "missionCompletions"), where("uid", "==", uid));
+  const snapCompletions = await getDocs(qCompletions);
+  const completions = snapCompletions.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    // As repetíveis marcam xpAwarded = 0 em missionCompletions, então filtramos
+    .filter((c) => c.xpAwarded > 0);
+
+  logs = [...logs, ...completions];
+
   // Ordena por data mais recente primeiro
   logs.sort((a, b) => {
     const timeA = a.completedAt?.toMillis ? a.completedAt.toMillis() : 0;
