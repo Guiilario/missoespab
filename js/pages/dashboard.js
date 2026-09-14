@@ -179,7 +179,9 @@ function renderHeader(profile) {
   const levelInfo = getLevelProgress(profile.totalXp || 0);
 
   document.getElementById("header-name").textContent = profile.name || "";
-  document.getElementById("header-username").textContent = `@${profile.username || ""}`;
+  document.getElementById("header-username").textContent = "@" + (profile.username || "");
+  const avatarImg = document.querySelector(".header-avatar img");
+  if (avatarImg) avatarImg.src = `assets/${profile.avatar || 'avatar-default.svg'}`;
   document.getElementById("header-streak").textContent = profile.currentStreak || 0;
   document.getElementById(
     "header-level"

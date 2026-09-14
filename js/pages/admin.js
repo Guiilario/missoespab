@@ -162,22 +162,15 @@ createUserForm.addEventListener("submit", async (e) => {
   const username = document.getElementById("new-username").value.trim();
   const email = document.getElementById("new-email").value.trim();
   const password = document.getElementById("new-password").value;
+  const avatar = document.querySelector('input[name="new-avatar"]:checked').value;
 
   createUserBtn.disabled = true;
   createUserBtn.innerHTML = "Criando...";
 
   try {
-    const uid = await createUserAsAdmin({ name, email, password });
-
-    try {
-      await createUserProfile(uid, { name, username, email });
-    } catch (profileErr) {
-      throw new Error(
-        `Login criado, mas falhou ao salvar o perfil (${
-          profileErr.code || profileErr.message
-        }). Copie esse código e me avise — não tente criar de novo com o mesmo e-mail.`
-      );
-    }
+    // A função createUserAsAdmin agora também cria o perfil no Firestore via REST API
+    // para contornar qualquer problema de regras de segurança não sincronizadas.
+    const uid = await createUserAsAdmin({ name, username, email, password, avatar });
 
     createUserSuccess.textContent = `Usuário "${name}" criado com sucesso.`;
     createUserSuccess.hidden = false;
@@ -554,7 +547,7 @@ function renderAdminRanking(rows) {
         <div class="admin-rank-row">
           <div class="admin-rank-left">
             <span class="admin-rank-position">${medal}</span>
-            <div class="admin-rank-avatar"><img src="assets/avatar-default.svg" alt="" /></div>
+            <div class="admin-rank-avatar"><img src="assets/${row.avatar || 'avatar-default.svg'}" alt="" /></div>
             <div>
               <p class="admin-rank-name">${escapeHtml(row.name)}</p>
               <p class="admin-rank-username">@${escapeHtml(row.username)}</p>

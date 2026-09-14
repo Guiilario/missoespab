@@ -47,7 +47,7 @@ function rankRowHtml(row) {
     <div class="rank-row ${isMe ? "me" : ""}">
       <div class="rank-row-left">
         <span class="rank-medal">${medal}</span>
-        <div class="rank-avatar"><img src="assets/avatar-default.svg" alt="" /></div>
+        <div class="rank-avatar"><img src="assets/${row.avatar || 'avatar-default.svg'}" alt="" /></div>
         <div>
           <p class="rank-name ${isMe ? "me" : ""}">
             ${escapeHtml(row.name)} ${isMe ? '<span class="you-tag">(você)</span>' : ""}

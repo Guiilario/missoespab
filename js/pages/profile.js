@@ -62,6 +62,8 @@ function render(profile) {
 
   document.getElementById("profile-name").textContent = profile.name || "";
   document.getElementById("profile-username").textContent = `@${profile.username || ""}`;
+  const avatarImg = document.querySelector(".profile-header img");
+  if (avatarImg) avatarImg.src = `assets/${profile.avatar || 'avatar-default.svg'}`;
   document.getElementById("profile-level").textContent = `Nível ${levelInfo.level}`;
   document.getElementById(
     "profile-xp-amount"

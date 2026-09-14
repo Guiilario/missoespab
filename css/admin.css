@@ -749,3 +749,42 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-tab-content { animation: none; }
 }
+
+/* ---------- Avatar Selector ---------- */
+.avatar-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+@media (max-width: 640px) {
+  .avatar-selector {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.avatar-option {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.avatar-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.avatar-option img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  border-radius: 0.25rem;
+}
+.avatar-option input[type="radio"]:checked + img {
+  border: 2px solid var(--brand-500);
+  padding: 2px;
+  background-color: var(--brand-500);
+}
