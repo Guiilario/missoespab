@@ -260,7 +260,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   min-height: 180px;
 }
 .mission-card[data-mission-card="convide-um-amigo"] {
-  background-image: url('../assets/card_bg.png');
+  background-image: url('../assets/cardconvite.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -331,10 +331,12 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 /* ---------- Perfil ---------- */
 .card.profile-card { 
   text-align: center; 
-  background-image: url('../assets/card_bg.png');
+  background-color: #061E85;
+  background-image: url('../assets/cardperfil.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  overflow: hidden;
 }
 .profile-avatar {
   width: 80px; height: 80px; border-radius: 50%; margin: 0 auto;
@@ -362,7 +364,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 
 .days-card { margin-top: 1.5rem; }
 .days-card p.label { font-size: 0.875rem; font-weight: 500; margin: 0; }
-.days-card p.value { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--brand-600); margin: 0.25rem 0 0; }
+.days-card p.value { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #FFFFFF; margin: 0.25rem 0 0; }
 
 .profile-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.5rem; }
 .btn-secondary {
