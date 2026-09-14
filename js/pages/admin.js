@@ -13,6 +13,7 @@ import {
   subscribeToRanking,
   todayKey,
   getMissionLogsForUser,
+  getVolunteerById
 } from "../firestore.js";
 
 // Não renderiza a nav global — o admin tem sua própria UI
@@ -314,15 +315,18 @@ async function openUserDetails(uid, user) {
     const logs = await getMissionLogsForUser(uid);
     currentUserMissions = logs.filter(l => !l.referralId);
     
-    // Indicações ainda estão misturadas em missionLogs? Se estiverem com referralId, nós pegamos daqui.
-    // Mas talvez seja melhor buscar da collection `volunteers`.
-    // Por enquanto, vamos extrair os logs de convite (referralId).
-    currentUserReferrals = logs.filter(l => !!l.referralId);
+    const referralLogs = logs.filter(l => !!l.referralId);
+    currentUserReferrals = await Promise.all(referralLogs.map(async (log) => {
+      const vol = await getVolunteerById(log.referralId);
+      return { ...log, volunteerData: vol };
+    }));
     
     renderMissionsTab();
     renderReferralsTab();
   } catch (err) {
-    document.getElementById("user-modal-logs-missions").innerHTML = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
+    const errorMsg = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
+    document.getElementById("user-modal-logs-missions").innerHTML = errorMsg;
+    document.getElementById("user-modal-logs-referrals").innerHTML = errorMsg;
     console.error(err);
   }
 }
@@ -359,6 +363,20 @@ function buildLogHtml(log) {
     if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
     if (log.proofData.photoUrl) {
       proofHtml += `<button type="button" class="btn-view-photo" data-url="${log.proofData.photoUrl}" style="margin-top:0.5rem;color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Foto &rarr;</button>`;
+    }
+    proofHtml += `</div>`;
+  }
+  
+  if (log.volunteerData) {
+    const vol = log.volunteerData;
+    proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
+    proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Nome:</strong> ${escapeHtml(vol.name)}</p>`;
+    if (vol.whatsapp) {
+      proofHtml += `<p style="margin:0 0 0.25rem;"><strong>WhatsApp:</strong> ${escapeHtml(vol.whatsapp)}</p>`;
+      const cleanWpp = vol.whatsapp.replace(/\D/g, '');
+      if (cleanWpp) {
+        proofHtml += `<a href="https://wa.me/55${cleanWpp.startsWith('55') ? cleanWpp.slice(2) : cleanWpp}" target="_blank" style="display:inline-block;margin-top:0.25rem;padding:0.35rem 0.6rem;background:#25D366;color:#fff;text-decoration:none;border-radius:0.25rem;font-size:0.75rem;font-weight:bold;">💬 Chamar no WhatsApp</a>`;
+      }
     }
     proofHtml += `</div>`;
   }

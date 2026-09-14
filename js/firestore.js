@@ -260,6 +260,11 @@ export async function createVolunteerReferral(inviterUid, { name, whatsapp }) {
   });
 }
 
+export async function getVolunteerById(id) {
+  const snap = await getDoc(doc(db, "volunteers", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
 /** Assina os voluntários que se cadastraram HOJE pelo link deste usuário. */
 export function subscribeToTodayReferrals(inviterUid, callback) {
   const q = query(
