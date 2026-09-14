@@ -1,12 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 110" fill="none">
-  <defs>
-    <linearGradient id="greenGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#39FF14"/>
-      <stop offset="100%" stop-color="#32CD32"/>
-    </linearGradient>
-  </defs>
-  <!-- "APP" in faded/ghost style -->
-  <text x="8" y="88" font-family="'Arial Black', 'Impact', 'Helvetica Neue', sans-serif" font-weight="900" font-size="95" fill="rgba(180,230,195,0.25)" letter-spacing="-3">APP</text>
-  <!-- "ab" in bright green, bold cursive overlapping -->
-  <text x="175" y="95" font-family="'Segoe Script', 'Brush Script MT', 'Comic Sans MS', cursive" font-weight="700" font-size="78" fill="url(#greenGrad)">ab</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 120" fill="none">
+  <!-- "APP" in solid bright green, bold -->
+  <text x="6" y="92" font-family="'Arial Black', 'Impact', 'Helvetica Neue', sans-serif" font-weight="900" font-size="105" fill="#00FF00" letter-spacing="-6">APP</text>
+  <!-- "ab" in black, cursive/handwritten -->
+  <text x="195" y="108" font-family="'Segoe Script', 'Brush Script MT', 'Dancing Script', cursive" font-weight="700" font-size="80" fill="#1a1a1a">ab</text>
 </svg>
