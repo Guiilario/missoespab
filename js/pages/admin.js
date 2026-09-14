@@ -271,110 +271,126 @@ usersListEl.addEventListener("click", async (e) => {
   }
 });
 
-// ---------- Modal de Detalhes do Usuário ----------
 const userModal = document.getElementById("user-details-modal");
 const userModalName = document.getElementById("user-modal-name");
 const userModalInfo = document.getElementById("user-modal-info");
-const userModalLogs = document.getElementById("user-modal-logs");
+const umTabs = document.querySelectorAll("#user-modal-tabs .admin-tab");
+const umTabContents = document.querySelectorAll(".um-tab-content");
 
-let currentUserLogs = [];
-let currentPage = 1;
-const LOGS_PER_PAGE = 4;
+let currentUserMissions = [];
+let currentUserPhotos = [];
+let currentUserReferrals = [];
 
+let currentUmTab = "missions";
+
+// Paginação simples (se necessário depois). Por enquanto sem paginação para simplificar.
 document.getElementById("user-modal-close")?.addEventListener("click", () => {
   userModal.style.display = "none";
+});
+
+umTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    umTabs.forEach((t) => t.classList.remove("active"));
+    umTabContents.forEach((c) => (c.style.display = "none"));
+    tab.classList.add("active");
+    const target = tab.dataset.umTab;
+    document.getElementById(`um-tab-${target}`).style.display = "block";
+    currentUmTab = target;
+  });
 });
 
 async function openUserDetails(uid, user) {
   userModalName.textContent = user.name;
   userModalInfo.innerHTML = `@${user.username} &bull; ${user.xp} XP total`;
-  userModalLogs.innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
+  
+  document.getElementById("user-modal-logs-missions").innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
+  document.getElementById("user-modal-logs-photos").innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
+  document.getElementById("user-modal-logs-referrals").innerHTML = `<p class="admin-empty-msg">Buscando indicações...</p>`;
+  
+  // Reseta para primeira aba
+  umTabs[0].click();
   userModal.style.display = "flex";
 
   try {
-    currentUserLogs = await getMissionLogsForUser(uid);
-    currentPage = 1;
-    renderLogsPage();
+    const logs = await getMissionLogsForUser(uid);
+    currentUserMissions = logs.filter(l => !l.proofData?.photoUrl && !l.referralId);
+    currentUserPhotos = logs.filter(l => !!l.proofData?.photoUrl);
+    
+    // Indicações ainda estão misturadas em missionLogs? Se estiverem com referralId, nós pegamos daqui.
+    // Mas talvez seja melhor buscar da collection `volunteers`.
+    // Por enquanto, vamos extrair os logs de convite (referralId).
+    currentUserReferrals = logs.filter(l => !!l.referralId);
+    
+    renderMissionsTab();
+    renderPhotosTab();
+    renderReferralsTab();
   } catch (err) {
-    userModalLogs.innerHTML = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
+    document.getElementById("user-modal-logs-missions").innerHTML = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
     console.error(err);
   }
 }
 
-function renderLogsPage() {
-  if (!currentUserLogs.length) {
-    userModalLogs.innerHTML = `<p class="admin-empty-msg">Nenhuma missão concluída.</p>`;
+function renderMissionsTab() {
+  const container = document.getElementById("user-modal-logs-missions");
+  if (!currentUserMissions.length) {
+    container.innerHTML = `<p class="admin-empty-msg">Nenhuma missão diária concluída.</p>`;
     return;
   }
+  container.innerHTML = currentUserMissions.map((log) => buildLogHtml(log)).join("");
+}
 
-  const startIndex = (currentPage - 1) * LOGS_PER_PAGE;
-  const pageLogs = currentUserLogs.slice(startIndex, startIndex + LOGS_PER_PAGE);
-
-  let html = pageLogs.map((log) => {
-    const mission = allMissionsCatalog.find((m) => m.id === log.missionId);
-    const title = mission ? mission.title : log.missionId;
-    const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
-    
-    let proofHtml = "";
-    if (log.proofData) {
-      proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
-      if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
-      if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
-      if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
-      if (log.proofData.photoUrl) {
-        proofHtml += `<button type="button" class="btn-view-photo" data-url="${log.proofData.photoUrl}" style="margin-top:0.5rem;color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Foto &rarr;</button>`;
-      }
-      proofHtml += `</div>`;
-    } else if (log.referralId) {
-       proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
-       proofHtml += `<p style="margin:0;">Convite de voluntário</p>`;
-       proofHtml += `</div>`;
-    }
-
-    return `
-      <div style="border-bottom:1px solid #eee;padding:1rem 0;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <strong style="display:block;margin-bottom:0.25rem;">${escapeHtml(title)}</strong>
-            <span style="font-size:0.75rem;color:#666;">${dateStr}</span>
-          </div>
-          <span style="font-size:0.875rem;font-weight:600;color:var(--mint);">+${log.xpAwarded} XP</span>
-        </div>
-        ${proofHtml}
-      </div>
-    `;
-  }).join("");
-
-  // Paginação
-  const totalPages = Math.ceil(currentUserLogs.length / LOGS_PER_PAGE);
-  if (totalPages > 1) {
-    html += `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
-        <button type="button" id="logs-prev" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer;color:var(--brand);background:none;border:none;font-weight:600;"'}>&larr; Anterior</button>
-        <span style="font-size:0.875rem;color:#666;">Página ${currentPage} de ${totalPages}</span>
-        <button type="button" id="logs-next" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer;color:var(--brand);background:none;border:none;font-weight:600;"'}>Próxima &rarr;</button>
-      </div>
-    `;
+function renderPhotosTab() {
+  const container = document.getElementById("user-modal-logs-photos");
+  if (!currentUserPhotos.length) {
+    container.innerHTML = `<p class="admin-empty-msg">Nenhuma foto registrada.</p>`;
+    return;
   }
+  container.innerHTML = currentUserPhotos.map((log) => buildLogHtml(log)).join("");
+  attachPhotoEvents(container);
+}
 
-  userModalLogs.innerHTML = html;
+function renderReferralsTab() {
+  const container = document.getElementById("user-modal-logs-referrals");
+  if (!currentUserReferrals.length) {
+    container.innerHTML = `<p class="admin-empty-msg">Nenhuma indicação registrada.</p>`;
+    return;
+  }
+  container.innerHTML = currentUserReferrals.map((log) => buildLogHtml(log)).join("");
+}
 
-  document.getElementById("logs-prev")?.addEventListener("click", () => {
-    if (currentPage > 1) {
-      currentPage--;
-      renderLogsPage();
+function buildLogHtml(log) {
+  const mission = allMissionsCatalog.find((m) => m.id === log.missionId);
+  const title = mission ? mission.title : (log.referralId ? "Indicação de Voluntário" : log.missionId);
+  const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
+  
+  let proofHtml = "";
+  if (log.proofData) {
+    proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
+    if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
+    if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
+    if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
+    if (log.proofData.photoUrl) {
+      proofHtml += `<button type="button" class="btn-view-photo" data-url="${log.proofData.photoUrl}" style="margin-top:0.5rem;color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Foto &rarr;</button>`;
     }
-  });
+    proofHtml += `</div>`;
+  }
+  
+  return `
+    <div style="border-bottom:1px solid #eee;padding:1rem 0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <strong style="display:block;margin-bottom:0.25rem;">${escapeHtml(title)}</strong>
+          <span style="font-size:0.75rem;color:#666;">${dateStr}</span>
+        </div>
+        <span style="font-size:0.875rem;font-weight:600;color:var(--mint);">+${log.xpAwarded} XP</span>
+      </div>
+      ${proofHtml}
+    </div>
+  `;
+}
 
-  document.getElementById("logs-next")?.addEventListener("click", () => {
-    if (currentPage < totalPages) {
-      currentPage++;
-      renderLogsPage();
-    }
-  });
-
-  // Popup de fotos
-  const photoBtns = userModalLogs.querySelectorAll(".btn-view-photo");
+function attachPhotoEvents(container) {
+  const photoBtns = container.querySelectorAll(".btn-view-photo");
   photoBtns.forEach(btn => {
     btn.addEventListener("click", (e) => {
       const url = e.target.dataset.url;

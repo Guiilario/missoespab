@@ -41,7 +41,8 @@ export function missionCardHtml({ index, mission, status, busy, actionLabel, cus
     <div class="mission-card ${isExpired ? "expired" : ""} ${
     isCompleted ? "completed" : ""
   }" data-mission-card="${mission.id}">
-      <div class="mission-card-top">
+      <div class="mission-card-bg" style="position: absolute; inset: 0; z-index: 1; background-size: cover; background-position: center; opacity: 0.2; pointer-events: none;"></div>
+      <div class="mission-card-top" style="position: relative; z-index: 2;">
         <div class="mission-card-text">
           <p class="mission-eyebrow">${customEyebrow ? escapeHtml(customEyebrow) : `Missão ${String(index + 1).padStart(2, "0")}`}</p>
           <h3 class="mission-title">${escapeHtml(mission.title)}</h3>

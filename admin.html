@@ -266,16 +266,37 @@
 
   <!-- ---------- Modal de Detalhes do Usuário ---------- -->
   <div id="user-details-modal" class="admin-modal-overlay" style="display:none;">
-    <div class="admin-modal-box">
+    <div class="admin-modal-box" style="max-width: 36rem;">
       <div class="admin-modal-header">
         <h3 id="user-modal-name" class="font-display" style="margin:0;font-size:1.25rem;">Nome do Usuário</h3>
         <button id="user-modal-close" class="admin-modal-close">&times;</button>
       </div>
       <p id="user-modal-info" style="font-size:0.875rem;color:rgba(11,15,25,0.6);margin:0 0 1.5rem;"></p>
-      <h4 class="font-display" style="margin:0 0 1rem;font-size:1rem;">Missões Concluídas</h4>
-      <div id="user-modal-logs">
-        <p class="admin-empty-msg">Carregando missões...</p>
+      
+      <div class="admin-tabs" id="user-modal-tabs" style="margin-bottom: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 0;">
+        <button class="admin-tab active" data-um-tab="missions">Missões diárias</button>
+        <button class="admin-tab" data-um-tab="photos">Fotos registradas</button>
+        <button class="admin-tab" data-um-tab="referrals">Pessoas indicadas</button>
       </div>
+
+      <div id="um-tab-missions" class="um-tab-content">
+        <div id="user-modal-logs-missions">
+          <p class="admin-empty-msg">Carregando missões...</p>
+        </div>
+      </div>
+
+      <div id="um-tab-photos" class="um-tab-content" style="display:none;">
+        <div id="user-modal-logs-photos">
+          <p class="admin-empty-msg">Carregando fotos...</p>
+        </div>
+      </div>
+
+      <div id="um-tab-referrals" class="um-tab-content" style="display:none;">
+        <div id="user-modal-logs-referrals">
+          <p class="admin-empty-msg">Carregando indicações...</p>
+        </div>
+      </div>
+
     </div>
   </div>
 
