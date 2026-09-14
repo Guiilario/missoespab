@@ -304,7 +304,6 @@ async function openUserDetails(uid, user) {
   userModalInfo.innerHTML = `@${user.username} &bull; ${user.xp} XP total`;
   
   document.getElementById("user-modal-logs-missions").innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
-  document.getElementById("user-modal-logs-photos").innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
   document.getElementById("user-modal-logs-referrals").innerHTML = `<p class="admin-empty-msg">Buscando indicações...</p>`;
   
   // Reseta para primeira aba
@@ -313,8 +312,7 @@ async function openUserDetails(uid, user) {
 
   try {
     const logs = await getMissionLogsForUser(uid);
-    currentUserMissions = logs.filter(l => !l.proofData?.photoUrl && !l.referralId);
-    currentUserPhotos = logs.filter(l => !!l.proofData?.photoUrl);
+    currentUserMissions = logs.filter(l => !l.referralId);
     
     // Indicações ainda estão misturadas em missionLogs? Se estiverem com referralId, nós pegamos daqui.
     // Mas talvez seja melhor buscar da collection `volunteers`.
@@ -322,7 +320,6 @@ async function openUserDetails(uid, user) {
     currentUserReferrals = logs.filter(l => !!l.referralId);
     
     renderMissionsTab();
-    renderPhotosTab();
     renderReferralsTab();
   } catch (err) {
     document.getElementById("user-modal-logs-missions").innerHTML = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
@@ -333,19 +330,10 @@ async function openUserDetails(uid, user) {
 function renderMissionsTab() {
   const container = document.getElementById("user-modal-logs-missions");
   if (!currentUserMissions.length) {
-    container.innerHTML = `<p class="admin-empty-msg">Nenhuma missão diária concluída.</p>`;
+    container.innerHTML = `<p class="admin-empty-msg">Nenhuma missão concluída.</p>`;
     return;
   }
   container.innerHTML = currentUserMissions.map((log) => buildLogHtml(log)).join("");
-}
-
-function renderPhotosTab() {
-  const container = document.getElementById("user-modal-logs-photos");
-  if (!currentUserPhotos.length) {
-    container.innerHTML = `<p class="admin-empty-msg">Nenhuma foto registrada.</p>`;
-    return;
-  }
-  container.innerHTML = currentUserPhotos.map((log) => buildLogHtml(log)).join("");
   attachPhotoEvents(container);
 }
 
