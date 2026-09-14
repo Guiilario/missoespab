@@ -541,6 +541,9 @@ assignedMissionsListEl.addEventListener("click", async (e) => {
   btn.disabled = true;
   try {
     await removeMissionFromDate(btn.dataset.removeId, btn.dataset.date);
+  } catch (error) {
+    console.error("Erro ao remover missão:", error);
+    alert("Erro ao remover missão: " + error.message);
   } finally {
     btn.disabled = false;
   }

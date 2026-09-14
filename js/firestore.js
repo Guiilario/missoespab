@@ -22,7 +22,9 @@ import {
 
 /** Retorna a data atual como YYYY-MM-DD, usada como chave da missão diária. */
 export function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
 }
 
 // ---------- USUÁRIOS ----------
