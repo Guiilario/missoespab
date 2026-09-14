@@ -116,7 +116,7 @@ export async function createUserAsAdmin({ name, username, email, password, avata
         completedMissionsCount: { integerValue: "0" },
         currentStreak: { integerValue: "0" },
         daysCompleted: { integerValue: "0" },
-        lastCompletedDay: { nullValue: null },
+        lastCompletedDay: { nullValue: "NULL_VALUE" },
         createdAt: { timestampValue: new Date().toISOString() }
       }
     })
