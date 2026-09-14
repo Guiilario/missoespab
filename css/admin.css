@@ -265,7 +265,7 @@
   margin: 0 0 1.25rem;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--ink);
+  color: #0B0F19;
 }
 
 /* ---------- Form fields ---------- */
@@ -293,7 +293,7 @@
   transition: border-color 0.2s, box-shadow 0.2s;
   min-height: 48px;
   font-family: var(--font-body);
-  color: var(--ink);
+  color: #0B0F19;
 }
 .admin-field input::placeholder {
   color: rgba(11,15,25,0.3);
@@ -304,7 +304,7 @@
   box-shadow: 0 0 0 3px rgba(10,51,225,0.1);
 }
 .admin-field input[type="date"] {
-  color: var(--ink);
+  color: #0B0F19;
 }
 
 .admin-form-grid {
@@ -406,7 +406,7 @@
   font-size: 0.9375rem;
   min-height: 48px;
   font-family: var(--font-body);
-  color: var(--ink);
+  color: #0B0F19;
 }
 .admin-inline-row select:focus {
   border-color: var(--brand-600);
@@ -449,7 +449,7 @@
   font-size: 0.9375rem;
   outline: none;
   font-family: var(--font-body);
-  color: var(--ink);
+  color: #0B0F19;
   min-height: 28px;
 }
 .admin-search-bar input::placeholder {
