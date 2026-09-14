@@ -322,7 +322,7 @@ function renderMissionsList() {
         
         let status = completions[id] ? "completed" : "available";
         const titleLower = (mission.title || "").toLowerCase();
-        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao");
+        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert");
         if (isRepeatable) {
           status = "available"; // Nunca bloqueia visualmente se pode repetir
         }
@@ -439,7 +439,7 @@ missionsListEl.addEventListener("click", async (e) => {
   }
   
   // Conversão (modal)
-  if (titleLower.includes("conversão") || titleLower.includes("conversao")) {
+  if (titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert")) {
     pendingConversao = { missionId, mission };
     document.getElementById("modal-conversao-nome").value = "";
     document.getElementById("modal-conversao-whatsapp").value = "";
@@ -459,7 +459,7 @@ missionsListEl.addEventListener("click", async (e) => {
   renderMissionsList();
 
   try {
-    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao");
+    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert");
     if (isRepeatable) {
       await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, proofData);
       if (titleLower.includes("panfletagem")) {
