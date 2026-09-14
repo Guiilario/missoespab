@@ -663,17 +663,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.5rem;
 }
 .admin-modal-box {
   background: #fff;
-  border-radius: 1.5rem;
-  padding: 2rem;
+  border-radius: 1.25rem;
+  padding: 1.25rem;
   max-width: 560px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+}
+@media (min-width: 480px) {
+  .admin-modal-overlay {
+    padding: 1rem;
+  }
+  .admin-modal-box {
+    border-radius: 1.5rem;
+    padding: 1.75rem;
+  }
+}
+@media (min-width: 640px) {
+  .admin-modal-box {
+    padding: 2rem;
+  }
 }
 .admin-modal-header {
   display: flex;
@@ -702,9 +716,22 @@
 /* Modal Tabs (Light Background) */
 #user-modal-tabs {
   background: transparent;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0;
+  margin-bottom: 1rem;
+  overflow-x: visible;
+  border-bottom: 1px solid rgba(0,0,0,0.08) !important;
 }
 #user-modal-tabs .admin-tab {
   color: rgba(11, 15, 25, 0.5);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  flex: 1 1 auto;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
 }
 #user-modal-tabs .admin-tab:hover {
   color: rgba(11, 15, 25, 0.8);
@@ -714,6 +741,12 @@
   color: var(--brand-600, #0A33E1);
   border-bottom-color: var(--brand-600, #0A33E1);
   background: rgba(10, 51, 225, 0.06);
+}
+@media (max-width: 480px) {
+  #user-modal-tabs .admin-tab {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.75rem;
+  }
 }
 
 /* ---------- Desktop responsive tweaks ---------- */
