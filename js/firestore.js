@@ -406,3 +406,66 @@ export async function completeReferralMission(inviterUid, referralId, xpReward) 
     });
   });
 }
+
+// ---------- CONVERSÕES ----------
+export async function createConversion(uid, missionId, xpReward, conversionData) {
+  const date = todayKey();
+  const timestamp = Date.now();
+  const completionId = `${uid}_${missionId}_${date}_${timestamp}`;
+  const dailyCompletionId = `${uid}_${missionId}_${date}`;
+  
+  const dailyCompletionRef = doc(db, "missionCompletions", dailyCompletionId);
+  const logRef = doc(db, "missionLogs", completionId);
+  const userRef = doc(db, "users", uid);
+
+  // We also create a record in conversoes collection
+  const conversaoRef = doc(collection(db, "conversoes"));
+
+  await runTransaction(db, async (tx) => {
+    const existingDaily = await tx.get(dailyCompletionRef);
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) return;
+
+    tx.set(logRef, {
+      uid,
+      missionId,
+      date,
+      xpAwarded: xpReward,
+      conversaoId: conversaoRef.id,
+      completedAt: serverTimestamp(),
+    });
+    
+    tx.set(conversaoRef, {
+      uid,
+      name: conversionData.name,
+      whatsapp: conversionData.whatsapp,
+      date,
+      createdAt: serverTimestamp(),
+    });
+
+    tx.update(userRef, {
+      totalXp: increment(xpReward),
+      completedMissionsCount: increment(1),
+    });
+
+    if (!existingDaily.exists()) {
+      tx.set(dailyCompletionRef, {
+        uid,
+        missionId,
+        date,
+        xpAwarded: 0,
+        completedAt: serverTimestamp(),
+      });
+    }
+  });
+}
+
+export async function getConversionsForUser(uid) {
+  const q = query(
+    collection(db, "conversoes"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}

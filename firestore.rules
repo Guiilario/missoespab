@@ -86,5 +86,13 @@ service cloud.firestore {
         request.resource.data.whatsapp.size() < 40;
       allow update, delete: if false;
     }
+
+    match /conversoes/{conversaoId} {
+      allow read: if request.auth != null &&
+        (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
   }
 }

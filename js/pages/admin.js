@@ -13,7 +13,8 @@ import {
   subscribeToRanking,
   todayKey,
   getMissionLogsForUser,
-  getVolunteerById
+  getVolunteerById,
+  getConversionsForUser
 } from "../firestore.js";
 
 // Não renderiza a nav global — o admin tem sua própria UI
@@ -281,6 +282,7 @@ const umTabContents = document.querySelectorAll(".um-tab-content");
 let currentUserMissions = [];
 let currentUserPhotos = [];
 let currentUserReferrals = [];
+let currentUserConversions = [];
 
 let currentUmTab = "missions";
 
@@ -306,6 +308,7 @@ async function openUserDetails(uid, user) {
   
   document.getElementById("user-modal-logs-missions").innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
   document.getElementById("user-modal-logs-referrals").innerHTML = `<p class="admin-empty-msg">Buscando indicações...</p>`;
+  document.getElementById("user-modal-logs-conversions").innerHTML = `<p class="admin-empty-msg">Buscando conversões...</p>`;
   
   // Reseta para primeira aba
   umTabs[0].click();
@@ -321,12 +324,16 @@ async function openUserDetails(uid, user) {
       return { ...log, volunteerData: vol };
     }));
     
+    currentUserConversions = await getConversionsForUser(uid);
+    
     renderMissionsTab();
     renderReferralsTab();
+    renderConversionsTab();
   } catch (err) {
     const errorMsg = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
     document.getElementById("user-modal-logs-missions").innerHTML = errorMsg;
     document.getElementById("user-modal-logs-referrals").innerHTML = errorMsg;
+    document.getElementById("user-modal-logs-conversions").innerHTML = errorMsg;
     console.error(err);
   }
 }
@@ -348,6 +355,27 @@ function renderReferralsTab() {
     return;
   }
   container.innerHTML = currentUserReferrals.map((log) => buildLogHtml(log)).join("");
+}
+
+function renderConversionsTab() {
+  const container = document.getElementById("user-modal-logs-conversions");
+  if (!currentUserConversions.length) {
+    container.innerHTML = `<p class="admin-empty-msg">Nenhuma conversão registrada.</p>`;
+    return;
+  }
+  container.innerHTML = currentUserConversions.map((conv) => {
+    // Adapter para usar o buildLogHtml
+    const logAdapter = {
+      missionId: "Conversão de Voluntário", // fallback title
+      completedAt: conv.createdAt,
+      xpAwarded: 450,
+      volunteerData: {
+        name: conv.name,
+        whatsapp: conv.whatsapp
+      }
+    };
+    return buildLogHtml(logAdapter);
+  }).join("");
 }
 
 function buildLogHtml(log) {

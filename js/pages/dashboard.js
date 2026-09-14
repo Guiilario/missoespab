@@ -10,6 +10,7 @@ import {
   completeRepeatableMission,
   completeReferralMission,
   uploadMissionPhoto,
+  createConversion,
 } from "../firestore.js";
 import { missionCardHtml } from "../mission-card.js";
 
@@ -142,6 +143,72 @@ document.getElementById("modal-submit").addEventListener("click", async () => {
   }
 });
 
+// ---- Modal de Conversão (injetado uma única vez) ----
+const modalConversaoOverlay = document.createElement("div");
+modalConversaoOverlay.id = "conversao-modal";
+modalConversaoOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
+modalConversaoOverlay.innerHTML = `
+  <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+    <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Registrar Conversão</h3>
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      Nome do convertido
+      <input type="text" id="modal-conversao-nome" placeholder="Ex: João da Silva" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+    </label>
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      WhatsApp
+      <input type="text" id="modal-conversao-whatsapp" placeholder="Ex: 11999999999" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+    </label>
+    <p id="modal-conversao-error" style="color:#d32f2f;font-size:.8rem;margin:0 0 .75rem;display:none;"></p>
+    <div style="display:flex;gap:.75rem;">
+      <button id="modal-conversao-cancel" style="flex:1;padding:.6rem;border:1px solid #ccc;background:transparent;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;">Cancelar</button>
+      <button id="modal-conversao-submit" style="flex:1;padding:.6rem;border:none;background:var(--brand);color:#fff;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;font-weight:600;">Enviar</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(modalConversaoOverlay);
+
+let pendingConversao = null; // { missionId, mission }
+
+document.getElementById("modal-conversao-cancel").addEventListener("click", () => {
+  modalConversaoOverlay.style.display = "none";
+  pendingConversao = null;
+});
+
+document.getElementById("modal-conversao-submit").addEventListener("click", async () => {
+  const name = document.getElementById("modal-conversao-nome").value.trim();
+  const whatsapp = document.getElementById("modal-conversao-whatsapp").value.trim();
+  const errorEl = document.getElementById("modal-conversao-error");
+
+  if (!name || !whatsapp) {
+    errorEl.textContent = "Preencha o nome e o WhatsApp.";
+    errorEl.style.display = "block";
+    return;
+  }
+  errorEl.style.display = "none";
+
+  const submitBtn = document.getElementById("modal-conversao-submit");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Enviando...";
+
+  try {
+    const { missionId, mission } = pendingConversao;
+    await createConversion(currentUser.uid, missionId, mission.xpReward, { name, whatsapp });
+    completions[missionId] = true;
+    alert("Missão concluída!");
+    modalConversaoOverlay.style.display = "none";
+    renderMissionsList();
+    maybeCompleteDay();
+  } catch (err) {
+    console.error("Erro ao registrar conversão:", err);
+    errorEl.textContent = "Erro ao enviar. Tente novamente.";
+    errorEl.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Enviar";
+    pendingConversao = null;
+  }
+});
+
 window.addEventListener("auth-ready", async (e) => {
   const { user, profile } = e.detail;
   const isFirstLoad = !currentUser;
@@ -255,7 +322,7 @@ function renderMissionsList() {
         
         let status = completions[id] ? "completed" : "available";
         const titleLower = (mission.title || "").toLowerCase();
-        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem");
+        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao");
         if (isRepeatable) {
           status = "available"; // Nunca bloqueia visualmente se pode repetir
         }
@@ -371,6 +438,18 @@ missionsListEl.addEventListener("click", async (e) => {
     return;
   }
   
+  // Conversão (modal)
+  if (titleLower.includes("conversão") || titleLower.includes("conversao")) {
+    pendingConversao = { missionId, mission };
+    document.getElementById("modal-conversao-nome").value = "";
+    document.getElementById("modal-conversao-whatsapp").value = "";
+    document.getElementById("modal-conversao-error").style.display = "none";
+    document.getElementById("modal-conversao-submit").textContent = "Enviar";
+    document.getElementById("modal-conversao-submit").disabled = false;
+    modalConversaoOverlay.style.display = "flex";
+    return;
+  }
+  
   let proofData = null;
   if (titleLower.includes("panfletagem")) {
     proofData = { localInicio: activeTimers[missionId].local };
@@ -380,7 +459,7 @@ missionsListEl.addEventListener("click", async (e) => {
   renderMissionsList();
 
   try {
-    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem");
+    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao");
     if (isRepeatable) {
       await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, proofData);
       if (titleLower.includes("panfletagem")) {
