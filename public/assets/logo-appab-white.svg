@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 120" fill="none">
+  <!-- "APP" in solid bright green, bold -->
+  <text x="6" y="92" font-family="'Arial Black', 'Impact', 'Helvetica Neue', sans-serif" font-weight="900" font-size="105" fill="#00FF00" letter-spacing="-6">APP</text>
+  <!-- "ab" in white, cursive/handwritten -->
+  <text x="195" y="108" font-family="'Segoe Script', 'Brush Script MT', 'Dancing Script', cursive" font-weight="700" font-size="80" fill="#ffffff">ab</text>
+</svg>
