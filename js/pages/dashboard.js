@@ -39,7 +39,29 @@ let busyMissionId = null;
 let dayJustCelebrated = false;
 
 // Estado local para timers da Panfletagem
-let activeTimers = {}; // { missionId: { endTime: number, intervalId: number } }
+let activeTimers = {}; // { missionId: { endTime: number, intervalId: number, gpsIntervalId: number } }
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + 
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function recordGPSPoint(missionId) {
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const pointsStr = localStorage.getItem(`timer_points_${missionId}`);
+      let points = pointsStr ? JSON.parse(pointsStr) : [];
+      points.push({ lat: position.coords.latitude, lng: position.coords.longitude, time: Date.now() });
+      localStorage.setItem(`timer_points_${missionId}`, JSON.stringify(points));
+    }, (err) => console.warn("GPS tracking error:", err), { enableHighAccuracy: true });
+  }
+}
 
 const missionsListEl = document.getElementById("missions-list");
 const dailyDotsEl = document.getElementById("daily-dots");
@@ -338,10 +360,14 @@ function renderMissionsList() {
              timer = { endTime: end, local: localStorage.getItem(`timer_local_${id}`) };
              activeTimers[id] = timer;
              const intervalId = setInterval(() => {
-               if (Date.now() >= end) clearInterval(intervalId);
+               if (Date.now() >= end) {
+                 clearInterval(intervalId);
+                 if (timer.gpsIntervalId) clearInterval(timer.gpsIntervalId);
+               }
                renderMissionsList();
              }, 1000);
              timer.intervalId = intervalId;
+             timer.gpsIntervalId = setInterval(() => recordGPSPoint(id), 10 * 60 * 1000);
           }
         }
         
@@ -403,17 +429,24 @@ missionsListEl.addEventListener("click", async (e) => {
       const endTime = Date.now() + 60 * 60 * 1000; // 1 hora
       localStorage.setItem(`timer_${missionId}`, endTime.toString());
       localStorage.setItem(`timer_local_${missionId}`, local);
+      localStorage.setItem(`timer_points_${missionId}`, JSON.stringify([]));
       
       activeTimers[missionId] = { endTime, local };
+      
+      recordGPSPoint(missionId); // Captura o primeiro ponto imediatamente
       
       const intervalId = setInterval(() => {
         if (Date.now() >= endTime) {
           clearInterval(intervalId);
+          clearInterval(activeTimers[missionId].gpsIntervalId);
         }
         renderMissionsList();
       }, 1000); // Atualiza a cada 1 segundo
       
+      const gpsIntervalId = setInterval(() => recordGPSPoint(missionId), 10 * 60 * 1000); // a cada 10 min
+      
       activeTimers[missionId].intervalId = intervalId;
+      activeTimers[missionId].gpsIntervalId = gpsIntervalId;
       renderMissionsList();
       return;
     } else {
@@ -451,8 +484,31 @@ missionsListEl.addEventListener("click", async (e) => {
   }
   
   let proofData = null;
+  let finalXpReward = mission.xpReward;
+  let completionMessage = "Missão concluída!";
+
   if (titleLower.includes("panfletagem")) {
-    proofData = { localInicio: activeTimers[missionId].local };
+    const pointsStr = localStorage.getItem(`timer_points_${missionId}`);
+    const points = pointsStr ? JSON.parse(pointsStr) : [];
+    
+    let totalDistance = 0;
+    for (let i = 1; i < points.length; i++) {
+      totalDistance += calculateDistance(points[i-1].lat, points[i-1].lng, points[i].lat, points[i].lng);
+    }
+    
+    const bonusXp = Math.floor(totalDistance) * 10;
+    finalXpReward += bonusXp;
+    
+    proofData = { 
+      localInicio: activeTimers[missionId].local,
+      distanceKm: totalDistance,
+      bonusXp: bonusXp,
+      trackPoints: points
+    };
+    
+    if (bonusXp > 0) {
+      completionMessage = `Missão concluída!\nDistância percorrida: ${totalDistance.toFixed(2)} km.\nBônus recebido: +${bonusXp} XP!`;
+    }
   }
 
   busyMissionId = missionId;
@@ -461,18 +517,20 @@ missionsListEl.addEventListener("click", async (e) => {
   try {
     const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert");
     if (isRepeatable) {
-      await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, proofData);
+      await completeRepeatableMission(currentUser.uid, missionId, finalXpReward, proofData);
       if (titleLower.includes("panfletagem")) {
         clearInterval(activeTimers[missionId].intervalId);
+        if (activeTimers[missionId].gpsIntervalId) clearInterval(activeTimers[missionId].gpsIntervalId);
         delete activeTimers[missionId];
         localStorage.removeItem(`timer_${missionId}`);
         localStorage.removeItem(`timer_local_${missionId}`);
+        localStorage.removeItem(`timer_points_${missionId}`);
       }
     } else {
-      await completeMission(currentUser.uid, missionId, mission.xpReward);
+      await completeMission(currentUser.uid, missionId, finalXpReward);
     }
     completions[missionId] = true;
-    alert("Missão concluída!");
+    alert(completionMessage);
   } finally {
     busyMissionId = null;
     renderMissionsList();
