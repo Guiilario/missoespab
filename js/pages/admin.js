@@ -402,7 +402,7 @@ function renderMissionsTab() {
     return;
   }
   container.innerHTML = currentUserMissions.map((log) => buildLogHtml(log)).join("");
-  attachPhotoEvents(container);
+  attachLogEvents(container);
 }
 
 function renderReferralsTab() {
@@ -445,7 +445,20 @@ function buildLogHtml(log) {
     proofHtml += `<div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">`;
     if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
     if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
-    if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
+    if (log.proofData.localInicio) {
+      if (log.proofData.trackPoints && log.proofData.trackPoints.length > 0) {
+        const pts = log.proofData.trackPoints;
+        const startTime = pts[0].time;
+        const endTime = pts[pts.length - 1].time;
+        const dist = log.proofData.distanceKm || 0;
+        proofHtml += `<div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 0.25rem;">
+          <p style="margin:0;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>
+          <button type="button" class="btn-view-panfletagem" data-start="${startTime}" data-end="${endTime}" data-dist="${dist}" style="color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Detalhes</button>
+        </div>`;
+      } else {
+        proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
+      }
+    }
     if (log.proofData.postLink) {
       let formattedLink = log.proofData.postLink;
       if (!/^https?:\/\//i.test(formattedLink)) {
@@ -487,12 +500,22 @@ function buildLogHtml(log) {
   `;
 }
 
-function attachPhotoEvents(container) {
+function attachLogEvents(container) {
   const photoBtns = container.querySelectorAll(".btn-view-photo");
   photoBtns.forEach(btn => {
     btn.addEventListener("click", (e) => {
       const url = e.target.dataset.url;
       openPhotoPopup(url);
+    });
+  });
+
+  const panfBtns = container.querySelectorAll(".btn-view-panfletagem");
+  panfBtns.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const start = parseInt(e.target.dataset.start);
+      const end = parseInt(e.target.dataset.end);
+      const dist = parseFloat(e.target.dataset.dist);
+      openPanfletagemPopup(start, end, dist);
     });
   });
 }
@@ -510,6 +533,38 @@ function openPhotoPopup(url) {
   
   overlay.addEventListener("click", (e) => {
     if (e.target.tagName !== 'IMG') {
+      overlay.remove();
+    }
+  });
+}
+
+function openPanfletagemPopup(start, end, dist) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;padding:1rem;";
+  
+  const startStr = new Date(start).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+  const endStr = new Date(end).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+  
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;">
+      <button style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;line-height:1;">&times;</button>
+      <h3 style="margin:0 0 1rem;font-size:1.1rem;color:#111;">Detalhes da Panfletagem</h3>
+      <div style="font-size:0.9rem;line-height:1.6;">
+        <p style="margin:0;"><strong>Início:</strong> ${startStr}</p>
+        <p style="margin:0;"><strong>Fim:</strong> ${endStr}</p>
+        <p style="margin:0;"><strong>Distância:</strong> ${dist.toFixed(2)} km</p>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  const closeBtn = overlay.querySelector('button');
+  closeBtn.addEventListener("click", () => {
+    overlay.remove();
+  });
+  
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
       overlay.remove();
     }
   });
