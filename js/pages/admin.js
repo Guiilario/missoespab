@@ -446,6 +446,9 @@ function buildLogHtml(log) {
     if (log.proofData.local) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Local:</strong> ${escapeHtml(log.proofData.local)}</p>`;
     if (log.proofData.referencia) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Ref:</strong> ${escapeHtml(log.proofData.referencia)}</p>`;
     if (log.proofData.localInicio) proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
+    if (log.proofData.postLink) {
+      proofHtml += `<a href="${log.proofData.postLink}" target="_blank" style="display:inline-block;margin-top:0.5rem;color:var(--brand);font-weight:600;font-size:0.875rem;text-decoration:none;">Visualizar postagem &rarr;</a>`;
+    }
     if (log.proofData.photoUrl) {
       proofHtml += `<button type="button" class="btn-view-photo" data-url="${log.proofData.photoUrl}" style="margin-top:0.5rem;color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Foto &rarr;</button>`;
     }

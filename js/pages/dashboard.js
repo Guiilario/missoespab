@@ -231,6 +231,68 @@ document.getElementById("modal-conversao-submit").addEventListener("click", asyn
   }
 });
 
+// ---- Modal de Postagem (injetado uma única vez) ----
+const modalPostagemOverlay = document.createElement("div");
+modalPostagemOverlay.id = "postagem-modal";
+modalPostagemOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
+modalPostagemOverlay.innerHTML = `
+  <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+    <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Link da Postagem</h3>
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      Insira o link
+      <input type="url" id="modal-postagem-link" placeholder="Ex: https://instagram.com/..." style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+      <span style="display:block;font-size:.75rem;color:#666;margin-top:.25rem;">Sua postagem deve estar pública</span>
+    </label>
+    <p id="modal-postagem-error" style="color:#d32f2f;font-size:.8rem;margin:0 0 .75rem;display:none;"></p>
+    <div style="display:flex;gap:.75rem;">
+      <button id="modal-postagem-cancel" style="flex:1;padding:.6rem;border:1px solid #ccc;background:transparent;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;">Cancelar</button>
+      <button id="modal-postagem-submit" style="flex:1;padding:.6rem;border:none;background:var(--brand);color:#fff;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;font-weight:600;">Enviar</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(modalPostagemOverlay);
+
+let pendingPostagem = null;
+
+document.getElementById("modal-postagem-cancel").addEventListener("click", () => {
+  modalPostagemOverlay.style.display = "none";
+  pendingPostagem = null;
+});
+
+document.getElementById("modal-postagem-submit").addEventListener("click", async () => {
+  const link = document.getElementById("modal-postagem-link").value.trim();
+  const errorEl = document.getElementById("modal-postagem-error");
+
+  if (!link) {
+    errorEl.textContent = "Preencha o link da postagem.";
+    errorEl.style.display = "block";
+    return;
+  }
+  errorEl.style.display = "none";
+
+  const submitBtn = document.getElementById("modal-postagem-submit");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Enviando...";
+
+  try {
+    const { missionId, mission } = pendingPostagem;
+    await completeRepeatableMission(currentUser.uid, missionId, mission.xpReward, { postLink: link });
+    completions[missionId] = true;
+    alert("Missão concluída!");
+    modalPostagemOverlay.style.display = "none";
+    renderMissionsList();
+    maybeCompleteDay();
+  } catch (err) {
+    console.error("Erro ao registrar postagem:", err);
+    errorEl.textContent = "Erro ao enviar. Tente novamente.";
+    errorEl.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Enviar";
+    pendingPostagem = null;
+  }
+});
+
 window.addEventListener("auth-ready", async (e) => {
   const { user, profile } = e.detail;
   const isFirstLoad = !currentUser;
@@ -344,7 +406,7 @@ function renderMissionsList() {
         
         let status = completions[id] ? "completed" : "available";
         const titleLower = (mission.title || "").toLowerCase();
-        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert");
+        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories");
         if (isRepeatable) {
           status = "available"; // Nunca bloqueia visualmente se pode repetir
         }
@@ -483,6 +545,17 @@ missionsListEl.addEventListener("click", async (e) => {
     return;
   }
   
+  // Postagem (modal)
+  if (titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories")) {
+    pendingPostagem = { missionId, mission };
+    document.getElementById("modal-postagem-link").value = "";
+    document.getElementById("modal-postagem-error").style.display = "none";
+    document.getElementById("modal-postagem-submit").textContent = "Enviar";
+    document.getElementById("modal-postagem-submit").disabled = false;
+    modalPostagemOverlay.style.display = "flex";
+    return;
+  }
+  
   let proofData = null;
   let finalXpReward = mission.xpReward;
   let completionMessage = "Missão concluída!";
@@ -515,7 +588,7 @@ missionsListEl.addEventListener("click", async (e) => {
   renderMissionsList();
 
   try {
-    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert");
+    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories");
     if (isRepeatable) {
       await completeRepeatableMission(currentUser.uid, missionId, finalXpReward, proofData);
       if (titleLower.includes("panfletagem")) {
