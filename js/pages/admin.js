@@ -26,6 +26,7 @@ let assignmentUnsub = null;
 let activeMissionsUnsub = null;
 let missionDetailUnsubs = [];
 let activeMissionDetailUnsubs = [];
+let panfletagemLogsMap = new Map();
 
 // ---------- Tab system ----------
 document.getElementById("admin-tabs").addEventListener("click", (e) => {
@@ -451,9 +452,11 @@ function buildLogHtml(log) {
         const startTime = pts[0].time;
         const endTime = pts[pts.length - 1].time;
         const dist = log.proofData.distanceKm || 0;
+        const mapId = Math.random().toString(36).substring(7);
+        panfletagemLogsMap.set(mapId, pts);
         proofHtml += `<div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 0.25rem;">
           <p style="margin:0;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>
-          <button type="button" class="btn-view-panfletagem" data-start="${startTime}" data-end="${endTime}" data-dist="${dist}" style="color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Detalhes</button>
+          <button type="button" class="btn-view-panfletagem" data-start="${startTime}" data-end="${endTime}" data-dist="${dist}" data-map-id="${mapId}" style="color:var(--brand);background:none;border:none;padding:0;font-weight:600;cursor:pointer;font-size:0.875rem;">Ver Detalhes</button>
         </div>`;
       } else {
         proofHtml += `<p style="margin:0 0 0.25rem;"><strong>Início:</strong> ${escapeHtml(log.proofData.localInicio)}</p>`;
@@ -515,7 +518,9 @@ function attachLogEvents(container) {
       const start = parseInt(e.target.dataset.start);
       const end = parseInt(e.target.dataset.end);
       const dist = parseFloat(e.target.dataset.dist);
-      openPanfletagemPopup(start, end, dist);
+      const mapId = e.target.dataset.mapId;
+      const pts = panfletagemLogsMap.get(mapId) || [];
+      openPanfletagemPopup(start, end, dist, pts);
     });
   });
 }
@@ -538,7 +543,7 @@ function openPhotoPopup(url) {
   });
 }
 
-function openPanfletagemPopup(start, end, dist) {
+function openPanfletagemPopup(start, end, dist, pts) {
   const overlay = document.createElement("div");
   overlay.style.cssText = "display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;padding:1rem;";
   
@@ -546,25 +551,53 @@ function openPanfletagemPopup(start, end, dist) {
   const endStr = new Date(end).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
   
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;">
-      <button style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;line-height:1;">&times;</button>
-      <h3 style="margin:0 0 1rem;font-size:1.1rem;color:#111;">Detalhes da Panfletagem</h3>
-      <div style="font-size:0.9rem;line-height:1.6;">
+    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;display:flex;flex-direction:column;max-height:90vh;">
+      <button class="close-panfletagem-btn" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;line-height:1;z-index:10;">&times;</button>
+      <h3 style="margin:0 0 1rem;font-size:1.1rem;color:#111;flex-shrink:0;">Detalhes da Panfletagem</h3>
+      <div style="font-size:0.9rem;line-height:1.6;flex-shrink:0;">
         <p style="margin:0;"><strong>Início:</strong> ${startStr}</p>
         <p style="margin:0;"><strong>Fim:</strong> ${endStr}</p>
         <p style="margin:0;"><strong>Distância:</strong> ${dist.toFixed(2)} km</p>
+      </div>
+      <div id="panfletagem-map-container" style="margin-top:1rem;flex:1;min-height:150px;border-radius:0.5rem;overflow:hidden;background:#eee;position:relative;cursor:pointer;transition:min-height 0.3s ease;">
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
   
-  const closeBtn = overlay.querySelector('button');
+  const mapContainer = overlay.querySelector('#panfletagem-map-container');
+  const closeBtn = overlay.querySelector('.close-panfletagem-btn');
+  
+  let map = null;
+  if (window.L && pts && pts.length > 0) {
+    map = L.map(mapContainer, { zoomControl: false }).setView([pts[0].lat, pts[0].lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+    
+    const latlngs = pts.map(p => [p.lat, p.lng]);
+    const polyline = L.polyline(latlngs, {color: '#0A33E1', weight: 4}).addTo(map);
+    map.fitBounds(polyline.getBounds(), { padding: [10, 10] });
+
+    // Expand map on click
+    mapContainer.addEventListener("click", () => {
+      if (mapContainer.style.minHeight === "150px") {
+        mapContainer.style.minHeight = "400px";
+        setTimeout(() => map.invalidateSize(), 300);
+      }
+    });
+  } else {
+    mapContainer.innerHTML = '<p style="text-align:center;padding:1rem;color:#666;font-size:0.875rem;">Mapa indisponível</p>';
+  }
+  
   closeBtn.addEventListener("click", () => {
+    if (map) map.remove();
     overlay.remove();
   });
   
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
+      if (map) map.remove();
       overlay.remove();
     }
   });
