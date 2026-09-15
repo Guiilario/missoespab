@@ -551,7 +551,7 @@ function openPanfletagemPopup(start, end, dist, pts) {
   const endStr = new Date(end).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
   
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;display:flex;flex-direction:column;max-height:90vh;">
+    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;display:flex;flex-direction:column;max-height:90vh;transition:max-width 0.3s ease;">
       <button class="close-panfletagem-btn" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;line-height:1;z-index:10;">&times;</button>
       <h3 style="margin:0 0 1rem;font-size:1.1rem;color:#111;flex-shrink:0;">Detalhes da Panfletagem</h3>
       <div style="font-size:0.9rem;line-height:1.6;flex-shrink:0;">
@@ -559,7 +559,7 @@ function openPanfletagemPopup(start, end, dist, pts) {
         <p style="margin:0;"><strong>Fim:</strong> ${endStr}</p>
         <p style="margin:0;"><strong>Distância:</strong> ${dist.toFixed(2)} km</p>
       </div>
-      <div id="panfletagem-map-container" style="margin-top:1rem;flex:1;min-height:150px;border-radius:0.5rem;overflow:hidden;background:#eee;position:relative;cursor:pointer;transition:min-height 0.3s ease;">
+      <div id="panfletagem-map-container" style="margin-top:1rem;flex:1;min-height:150px;border-radius:0.5rem;overflow:hidden;background:#eee;position:relative;cursor:pointer;transition:all 0.3s ease;">
       </div>
     </div>
   `;
@@ -581,9 +581,16 @@ function openPanfletagemPopup(start, end, dist, pts) {
 
     // Expand map on click
     mapContainer.addEventListener("click", () => {
+      const popupDiv = overlay.querySelector('div');
       if (mapContainer.style.minHeight === "150px") {
-        mapContainer.style.minHeight = "400px";
-        setTimeout(() => map.invalidateSize(), 300);
+        popupDiv.style.maxWidth = "640px";
+        mapContainer.style.minHeight = "auto";
+        mapContainer.style.aspectRatio = "16 / 9";
+        mapContainer.style.cursor = "default";
+        setTimeout(() => {
+          map.invalidateSize();
+          map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+        }, 300);
       }
     });
   } else {
