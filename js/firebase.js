@@ -135,9 +135,12 @@ export async function createUserAsAdmin({ name, username, email, password, avata
 export {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
   doc,
   addDoc,
+
   getDoc,
   getDocs,
   setDoc,
