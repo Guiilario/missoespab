@@ -74,7 +74,7 @@ const modalOverlay = document.createElement("div");
 modalOverlay.id = "adesivagem-modal";
 modalOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
 modalOverlay.innerHTML = `
-  <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+  <div style="background:#0A33E1;border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
     <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Comprovar Adesivagem</h3>
     <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
       Local de adesivagem
@@ -170,7 +170,7 @@ const modalConversaoOverlay = document.createElement("div");
 modalConversaoOverlay.id = "conversao-modal";
 modalConversaoOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
 modalConversaoOverlay.innerHTML = `
-  <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+  <div style="background:#0A33E1;border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
     <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Registrar Conversão</h3>
     <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
       Nome do convertido
@@ -236,7 +236,7 @@ const modalPostagemOverlay = document.createElement("div");
 modalPostagemOverlay.id = "postagem-modal";
 modalPostagemOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
 modalPostagemOverlay.innerHTML = `
-  <div style="background:var(--paper);border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+  <div style="background:#0A33E1;border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
     <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Link da Postagem</h3>
     <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
       Insira o link
