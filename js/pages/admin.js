@@ -551,7 +551,7 @@ function openPanfletagemPopup(start, end, dist, pts) {
   const endStr = new Date(end).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
   
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;display:flex;flex-direction:column;max-height:90vh;transition:max-width 0.3s ease;">
+    <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:320px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;color:#333;display:flex;flex-direction:column;max-height:90vh;">
       <button class="close-panfletagem-btn" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;line-height:1;z-index:10;">&times;</button>
       <h3 style="margin:0 0 1rem;font-size:1.1rem;color:#111;flex-shrink:0;">Detalhes da Panfletagem</h3>
       <div style="font-size:0.9rem;line-height:1.6;flex-shrink:0;">
@@ -559,7 +559,7 @@ function openPanfletagemPopup(start, end, dist, pts) {
         <p style="margin:0;"><strong>Fim:</strong> ${endStr}</p>
         <p style="margin:0;"><strong>Distância:</strong> ${dist.toFixed(2)} km</p>
       </div>
-      <div id="panfletagem-map-container" style="margin-top:1rem;flex:1;min-height:150px;border-radius:0.5rem;overflow:hidden;background:#eee;position:relative;cursor:pointer;transition:all 0.3s ease;">
+      <div id="panfletagem-map-container" style="margin-top:1rem;height:150px;border-radius:0.5rem;overflow:hidden;background:#eee;position:relative;cursor:pointer;">
       </div>
     </div>
   `;
@@ -579,19 +579,39 @@ function openPanfletagemPopup(start, end, dist, pts) {
     const polyline = L.polyline(latlngs, {color: '#0A33E1', weight: 4}).addTo(map);
     map.fitBounds(polyline.getBounds(), { padding: [10, 10] });
 
-    // Expand map on click
+    // Open large map in a new popup on click
     mapContainer.addEventListener("click", () => {
-      const popupDiv = overlay.querySelector('div');
-      if (mapContainer.style.minHeight === "150px") {
-        popupDiv.style.maxWidth = "640px";
-        mapContainer.style.minHeight = "auto";
-        mapContainer.style.aspectRatio = "16 / 9";
-        mapContainer.style.cursor = "default";
-        setTimeout(() => {
-          map.invalidateSize();
-          map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
-        }, 300);
-      }
+      const largeOverlay = document.createElement("div");
+      largeOverlay.style.cssText = "display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10001;align-items:center;justify-content:center;padding:1rem;";
+      
+      largeOverlay.innerHTML = `
+        <div style="background:#fff;border-radius:1rem;padding:1rem;max-width:800px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.5);position:relative;">
+          <button class="close-large-map-btn" style="position:absolute;top:-2.5rem;right:0;background:none;border:none;font-size:2.5rem;cursor:pointer;color:#fff;line-height:1;z-index:10;">&times;</button>
+          <div id="large-map-container" style="width:100%;aspect-ratio:16/9;border-radius:0.5rem;overflow:hidden;background:#eee;"></div>
+        </div>
+      `;
+      document.body.appendChild(largeOverlay);
+      
+      const largeMapContainer = largeOverlay.querySelector('#large-map-container');
+      const largeMap = L.map(largeMapContainer, { zoomControl: true }).setView([pts[0].lat, pts[0].lng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(largeMap);
+      
+      const largePolyline = L.polyline(latlngs, {color: '#0A33E1', weight: 4}).addTo(largeMap);
+      largeMap.fitBounds(largePolyline.getBounds(), { padding: [20, 20] });
+      
+      largeOverlay.querySelector('.close-large-map-btn').addEventListener("click", () => {
+        largeMap.remove();
+        largeOverlay.remove();
+      });
+      
+      largeOverlay.addEventListener("click", (e) => {
+        if (e.target === largeOverlay) {
+          largeMap.remove();
+          largeOverlay.remove();
+        }
+      });
     });
   } else {
     mapContainer.innerHTML = '<p style="text-align:center;padding:1rem;color:#666;font-size:0.875rem;">Mapa indisponível</p>';
