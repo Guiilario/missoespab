@@ -54,7 +54,7 @@ service cloud.firestore {
     match /missionCompletions/{compId} {
       allow read: if request.auth != null &&
         (isAdmin() || compId.matches(request.auth.uid + '_.*'));
-      allow write: if request.auth != null && compId.matches(request.auth.uid + '_.*');
+      allow write: if (request.auth != null && compId.matches(request.auth.uid + '_.*')) || isAdmin();
     }
 
     // Logs de missões repetíveis (Adesivagem, Panfletagem, convites).
@@ -65,7 +65,8 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         logId.matches(request.auth.uid + '_.*') &&
         request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow delete: if isAdmin();
+      allow update: if false;
     }
 
     // a spam/abuso (alguém pode enviar várias entradas manualmente). Se isso
@@ -84,7 +85,8 @@ service cloud.firestore {
         request.resource.data.inviterUid.size() > 0 &&
         request.resource.data.whatsapp is string &&
         request.resource.data.whatsapp.size() < 40;
-      allow update, delete: if false;
+      allow delete: if isAdmin();
+      allow update: if false;
     }
 
     match /conversoes/{conversaoId} {
@@ -92,7 +94,8 @@ service cloud.firestore {
         (resource.data.uid == request.auth.uid || isAdmin());
       allow create: if request.auth != null &&
         request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow delete: if isAdmin();
+      allow update: if false;
     }
   }
 }

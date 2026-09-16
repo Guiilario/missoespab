@@ -533,3 +533,38 @@ export async function getConversionById(id) {
   const snap = await getDoc(doc(db, "conversoes", id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
+
+// ---------- EXPORTAÇÃO ----------
+
+export async function getVolunteersByDate(dateStr) {
+  let q;
+  if (dateStr) {
+    q = query(collection(db, "volunteers"), where("date", "==", dateStr));
+  } else {
+    q = query(collection(db, "volunteers"));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getConversionsByDate(dateStr) {
+  let q;
+  if (dateStr) {
+    q = query(collection(db, "conversoes"), where("date", "==", dateStr));
+  } else {
+    q = query(collection(db, "conversoes"));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getMissionLogsByDate(dateStr) {
+  let q;
+  if (dateStr) {
+    q = query(collection(db, "missionLogs"), where("date", "==", dateStr));
+  } else {
+    q = query(collection(db, "missionLogs"));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, _collection: "missionLogs", ...d.data() }));
+}

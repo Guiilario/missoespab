@@ -15,7 +15,10 @@ import {
   getMissionLogsForUser,
   getVolunteerById,
   getConversionById,
-  revokeLog
+  revokeLog,
+  getVolunteersByDate,
+  getConversionsByDate,
+  getMissionLogsByDate
 } from "../firestore.js";
 
 // Não renderiza a nav global — o admin tem sua própria UI
@@ -850,3 +853,190 @@ function escapeHtml(str) {
   div.textContent = str ?? "";
   return div.innerHTML;
 }
+
+// ---------- Exportação de Dados ----------
+const btnExportCsv = document.getElementById("btn-export-csv");
+const btnExportHtml = document.getElementById("btn-export-html");
+const exportMsg = document.getElementById("export-msg");
+
+function showExportMsg(msg, isError = false) {
+  if (!exportMsg) return;
+  exportMsg.textContent = msg;
+  exportMsg.style.color = isError ? "red" : "var(--brand)";
+  exportMsg.hidden = false;
+  setTimeout(() => { exportMsg.hidden = true; }, 5000);
+}
+
+function getExportDate() {
+  const d = document.getElementById("export-date")?.value;
+  return d || null;
+}
+
+btnExportCsv?.addEventListener("click", async () => {
+  try {
+    btnExportCsv.disabled = true;
+    showExportMsg("Buscando dados...", false);
+    
+    const date = getExportDate();
+    const vols = await getVolunteersByDate(date);
+    const convs = await getConversionsByDate(date);
+    
+    const allContacts = [];
+    vols.forEach(v => allContacts.push({ name: v.name, wpp: v.whatsapp, type: "Indicação Convide um amigo", date: v.date }));
+    convs.forEach(c => allContacts.push({ name: c.name, wpp: c.whatsapp, type: "Conversão de Eleitor", date: c.date }));
+    
+    if (allContacts.length === 0) {
+      showExportMsg("Nenhum contato encontrado para esta data.", true);
+      return;
+    }
+    
+    // Header
+    let csv = "Nome;WhatsApp;Origem;Data\n";
+    allContacts.forEach(c => {
+      // Formata CSV evitando quebrar por ponto e vírgula
+      const name = (c.name || "").replace(/;/g, " ");
+      const wpp = c.wpp || "";
+      csv += `${name};${wpp};${c.type};${c.date}\n`;
+    });
+    
+    // BOM para o Excel ler acentos
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `contatos_pab_${date || 'todos'}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showExportMsg("Arquivo CSV baixado com sucesso!");
+  } catch (err) {
+    console.error("Erro ao exportar CSV:", err);
+    showExportMsg("Erro ao exportar CSV.", true);
+  } finally {
+    btnExportCsv.disabled = false;
+  }
+});
+
+btnExportHtml?.addEventListener("click", async () => {
+  try {
+    btnExportHtml.disabled = true;
+    showExportMsg("Gerando relatório visual...", false);
+    
+    const date = getExportDate();
+    const logs = await getMissionLogsByDate(date);
+    
+    // Filtra apenas missões que geraram algum tipo de prova material ou indicação
+    const proofLogs = logs.filter(l => l.proofData || l.referralId || l.conversaoId);
+    
+    if (proofLogs.length === 0) {
+      showExportMsg("Nenhuma ação com comprovante encontrada para esta data.", true);
+      return;
+    }
+    
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório Visual de Comprovantes - ${date || 'Geral'}</title>
+        <style>
+          body { font-family: 'Arial', sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 2rem; }
+          .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+          .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 2rem; }
+          h1 { margin: 0 0 0.5rem; color: #0f172a; font-size: 1.75rem; }
+          .item-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: #fdfdfd; }
+          .item-title { font-weight: bold; font-size: 1.2rem; color: #0A33E1; margin: 0 0 0.5rem; }
+          .meta-info { font-size: 0.9rem; color: #64748b; margin-bottom: 1rem; }
+          .proof-box { background: #f1f5f9; padding: 1rem; border-radius: 6px; }
+          img.proof-photo { max-width: 100%; max-height: 400px; border-radius: 4px; margin-top: 0.5rem; display: block; }
+          a.btn-link { display: inline-block; background: #0A33E1; color: #fff; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 0.5rem; }
+          .highlight { font-weight: 600; color: #0f172a; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Relatório de Comprovantes</h1>
+            <p>Data do filtro: <strong>${date ? date.split('-').reverse().join('/') : 'Histórico completo'}</strong></p>
+            <p>Total de registros com prova: <strong>${proofLogs.length}</strong></p>
+          </div>
+    `;
+    
+    for (const log of proofLogs) {
+      // Find mission title
+      const mission = allMissionsCatalog.find(m => m.id === log.missionId);
+      const title = log.conversaoId ? "Conversão de Eleitor" : (log.referralId ? "Indicação Convide um amigo" : (mission?.title || log.missionId));
+      
+      // Find user name (cache search)
+      const user = allUsersCache.find(u => u.id === log.uid) || { name: 'Usuário não encontrado', username: log.uid };
+      const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
+      
+      htmlContent += `
+          <div class="item-card">
+            <h3 class="item-title">${escapeHtml(title)}</h3>
+            <p class="meta-info">Feito por: <span class="highlight">${escapeHtml(user.name)}</span> (@${escapeHtml(user.username)}) em ${dateStr}</p>
+            <div class="proof-box">
+      `;
+      
+      if (log.proofData) {
+        const pd = log.proofData;
+        if (pd.local) htmlContent += `<p><strong>Local:</strong> ${escapeHtml(pd.local)}</p>`;
+        if (pd.referencia) htmlContent += `<p><strong>Referência:</strong> ${escapeHtml(pd.referencia)}</p>`;
+        if (pd.localInicio) htmlContent += `<p><strong>Início/Região (Panfletagem):</strong> ${escapeHtml(pd.localInicio)}</p>`;
+        if (pd.distanceKm) htmlContent += `<p><strong>Distância percorrida:</strong> ${pd.distanceKm.toFixed(2)} km</p>`;
+        
+        if (pd.postLink) {
+          let link = pd.postLink;
+          if (!/^https?:\/\//i.test(link)) link = 'https://' + link;
+          htmlContent += `<a href="${link}" target="_blank" class="btn-link">Visualizar Publicação</a>`;
+        }
+        
+        if (pd.photoUrl) {
+          htmlContent += `<p style="margin-top:1rem;margin-bottom:0.25rem;"><strong>Foto da Ação:</strong></p>
+          <img src="${pd.photoUrl}" class="proof-photo" alt="Comprovante de foto" />`;
+        }
+      }
+      
+      if (log.referralId || log.conversaoId) {
+        let vol = null;
+        if (log.referralId) vol = await getVolunteerById(log.referralId);
+        if (log.conversaoId) vol = await getConversionById(log.conversaoId);
+        
+        if (vol) {
+           htmlContent += `<p><strong>Nome do contato:</strong> ${escapeHtml(vol.name)}</p>`;
+           htmlContent += `<p><strong>WhatsApp:</strong> ${escapeHtml(vol.whatsapp)}</p>`;
+        }
+      }
+      
+      htmlContent += `
+            </div>
+          </div>
+      `;
+    }
+    
+    htmlContent += `
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `relatorio_pab_${date || 'todos'}.html`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showExportMsg("Relatório HTML gerado e baixado!");
+  } catch (err) {
+    console.error("Erro ao exportar HTML:", err);
+    showExportMsg("Erro ao gerar relatório HTML.", true);
+  } finally {
+    btnExportHtml.disabled = false;
+  }
+});
