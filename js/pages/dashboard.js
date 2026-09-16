@@ -563,7 +563,7 @@ function renderMissionsList() {
                }
              }, 1000);
              timer.intervalId = intervalId;
-             timer.gpsIntervalId = setInterval(() => recordGPSPoint(id), 10000);
+             timer.gpsIntervalId = setInterval(() => recordGPSPoint(id), 240000); // a cada 4 min
           }
         }
         
@@ -656,7 +656,7 @@ missionsListEl.addEventListener("click", async (e) => {
         }
       }, 1000); // Atualiza a cada 1 segundo
       
-      const gpsIntervalId = setInterval(() => recordGPSPoint(missionId), 10000); // a cada 10 s
+      const gpsIntervalId = setInterval(() => recordGPSPoint(missionId), 240000); // a cada 4 min
       
       activeTimers[missionId].intervalId = intervalId;
       activeTimers[missionId].gpsIntervalId = gpsIntervalId;
