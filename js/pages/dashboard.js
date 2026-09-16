@@ -293,6 +293,82 @@ document.getElementById("modal-postagem-submit").addEventListener("click", async
   }
 });
 
+// ---- Modal de Convite (injetado uma única vez) ----
+const modalConviteOverlay = document.createElement("div");
+modalConviteOverlay.id = "convite-modal";
+modalConviteOverlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;";
+modalConviteOverlay.innerHTML = `
+  <div style="background:#0A33E1;border-radius:var(--radius-xl);padding:1.5rem;max-width:400px;width:100%;box-shadow:var(--shadow-card);">
+    <h3 style="font-family:var(--font-display);margin:0 0 1rem;font-size:1.1rem;">Convide um Amigo</h3>
+    <p style="font-size:0.875rem;margin-bottom:1rem;opacity:0.9;">Preencha os dados do amigo que você convidou para registrar a indicação, ou clique abaixo para copiar seu link.</p>
+    
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      Nome do amigo
+      <input type="text" id="modal-convite-nome" placeholder="Ex: Maria Oliveira" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+    </label>
+    <label style="display:block;margin-bottom:.75rem;font-size:.875rem;">
+      WhatsApp
+      <input type="text" id="modal-convite-whatsapp" placeholder="Ex: 11999999999" style="display:block;width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #ccc;border-radius:.5rem;font-size:.875rem;font-family:var(--font-body);" />
+    </label>
+    <p id="modal-convite-error" style="color:#d32f2f;font-size:.8rem;margin:0 0 .75rem;display:none;"></p>
+    
+    <div style="display:flex;gap:.75rem;margin-bottom:1rem;">
+      <button id="modal-convite-cancel" style="flex:1;padding:.6rem;border:1px solid #ccc;background:transparent;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;">Cancelar</button>
+      <button id="modal-convite-submit" style="flex:1;padding:.6rem;border:none;background:var(--brand);color:#fff;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;font-weight:600;">Registrar Indicação</button>
+    </div>
+    
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:1rem 0;" />
+    
+    <button id="modal-convite-link-btn" style="width:100%;padding:.6rem;border:1px solid rgba(255,255,255,0.5);background:transparent;color:#fff;border-radius:.5rem;cursor:pointer;font-family:var(--font-body);font-size:.875rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+      Copiar Link de Convite
+    </button>
+  </div>
+`;
+document.body.appendChild(modalConviteOverlay);
+
+import { createVolunteerReferral } from "../firestore.js";
+
+document.getElementById("modal-convite-cancel").addEventListener("click", () => {
+  modalConviteOverlay.style.display = "none";
+});
+
+document.getElementById("modal-convite-link-btn").addEventListener("click", async () => {
+  await shareInviteLink(currentUser.uid);
+  modalConviteOverlay.style.display = "none";
+});
+
+document.getElementById("modal-convite-submit").addEventListener("click", async () => {
+  const name = document.getElementById("modal-convite-nome").value.trim();
+  const whatsapp = document.getElementById("modal-convite-whatsapp").value.trim();
+  const errorEl = document.getElementById("modal-convite-error");
+
+  if (!name || !whatsapp) {
+    errorEl.textContent = "Preencha o nome e o WhatsApp do amigo.";
+    errorEl.style.display = "block";
+    return;
+  }
+  errorEl.style.display = "none";
+
+  const submitBtn = document.getElementById("modal-convite-submit");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Registrando...";
+
+  try {
+    // Isso cria o voluntário. O listener subscribeToTodayReferrals vai detectar e dar o XP.
+    await createVolunteerReferral(currentUser.uid, { name, whatsapp });
+    alert("Indicação registrada com sucesso! Você ganhou XP.");
+    modalConviteOverlay.style.display = "none";
+  } catch (err) {
+    console.error("Erro ao registrar indicação:", err);
+    errorEl.textContent = "Erro ao enviar. Tente novamente.";
+    errorEl.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Registrar Indicação";
+  }
+});
+
 window.addEventListener("auth-ready", async (e) => {
   const { user, profile } = e.detail;
   const isFirstLoad = !currentUser;
@@ -406,7 +482,7 @@ function renderMissionsList() {
         
         let status = completions[id] ? "completed" : "available";
         const titleLower = (mission.title || "").toLowerCase();
-        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories");
+        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories") || titleLower.includes("convide") || titleLower.includes("amigo") || titleLower.includes("convite");
         if (isRepeatable) {
           status = "available"; // Nunca bloqueia visualmente se pode repetir
         }
@@ -470,9 +546,10 @@ missionsListEl.addEventListener("click", async (e) => {
   const missionId = btn.dataset.missionId;
 
   if (missionId === PERMANENT_MISSION.id) {
-    // Só copia/compartilha o link — a missão completa sozinha quando
-    // alguém de fato se cadastrar por ele (ver subscribeToTodayReferrals).
-    await shareInviteLink(currentUser.uid);
+    document.getElementById("modal-convite-nome").value = "";
+    document.getElementById("modal-convite-whatsapp").value = "";
+    document.getElementById("modal-convite-error").style.display = "none";
+    modalConviteOverlay.style.display = "flex";
     return;
   }
 
@@ -480,6 +557,15 @@ missionsListEl.addEventListener("click", async (e) => {
   if (!mission) return;
 
   const titleLower = (mission.title || "").toLowerCase();
+  
+  // Se for uma missão diária com nome de convite, abre o modal
+  if (titleLower.includes("convide") || titleLower.includes("amigo") || titleLower.includes("convite")) {
+    document.getElementById("modal-convite-nome").value = "";
+    document.getElementById("modal-convite-whatsapp").value = "";
+    document.getElementById("modal-convite-error").style.display = "none";
+    modalConviteOverlay.style.display = "flex";
+    return;
+  }
   
   // Timer de panfletagem
   if (titleLower.includes("panfletagem")) {
