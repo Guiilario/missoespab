@@ -5,6 +5,7 @@ import { saveCheckin } from "./firestore.js";
 // #nav-top e #nav-bottom, presentes no HTML de cada página protegida.
 // currentPage deve ser um de: "hoje" | "ranking" | "perfil".
 
+const ITEMS = [
   { page: "hoje", href: "index.html", label: "Hoje", icon: homeIcon() },
   { page: "ranking", href: "ranking.html", label: "Ranking", icon: trophyIcon() },
   { page: "checkin", href: "#", id: "btn-nav-checkin", label: "Check-in", icon: checkinIcon() },
