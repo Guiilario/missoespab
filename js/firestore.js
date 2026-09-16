@@ -583,9 +583,16 @@ export async function saveCheckin(uid, lat, lng) {
 export async function getCheckinsForUser(uid) {
   const q = query(
     collection(db, "checkins"),
-    where("uid", "==", uid),
-    orderBy("createdAt", "desc")
+    where("uid", "==", uid)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, _collection: "checkins", ...d.data() }));
+  const checkins = snap.docs.map(d => ({ id: d.id, _collection: "checkins", ...d.data() }));
+  
+  checkins.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return timeB - timeA;
+  });
+  
+  return checkins;
 }
