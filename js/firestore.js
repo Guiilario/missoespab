@@ -71,13 +71,13 @@ export async function getMissionLogsForUser(uid) {
   // Pega logs detalhados (missões com foto e indicações)
   const qLogs = query(collection(db, "missionLogs"), where("uid", "==", uid));
   const snapLogs = await getDocs(qLogs);
-  let logs = snapLogs.docs.map((d) => ({ id: d.id, ...d.data() }));
+  let logs = snapLogs.docs.map((d) => ({ id: d.id, _collection: "missionLogs", ...d.data() }));
 
   // Pega missões diárias simples
   const qCompletions = query(collection(db, "missionCompletions"), where("uid", "==", uid));
   const snapCompletions = await getDocs(qCompletions);
   const completions = snapCompletions.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
+    .map((d) => ({ id: d.id, _collection: "missionCompletions", ...d.data() }))
     // As repetíveis marcam xpAwarded = 0 em missionCompletions, então filtramos
     .filter((c) => c.xpAwarded > 0);
 
@@ -95,6 +95,31 @@ export async function getMissionLogsForUser(uid) {
 /** Ativa/desativa o acesso de um usuário ao app (uso do painel admin). */
 export async function setUserDisabled(uid, disabled) {
   await updateDoc(doc(db, "users", uid), { disabled });
+}
+
+/** Revoga uma missão, indicação ou conversão e deduz XP (uso do painel admin). */
+export async function revokeLog(log) {
+  if (!log || !log.id || !log._collection) return;
+  const logRef = doc(db, log._collection, log.id);
+  const userRef = doc(db, "users", log.uid);
+
+  await runTransaction(db, async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (userSnap.exists()) {
+      tx.update(userRef, {
+        totalXp: increment(-log.xpAwarded),
+        completedMissionsCount: increment(-1),
+      });
+    }
+    tx.delete(logRef);
+    
+    if (log.conversaoId) {
+      tx.delete(doc(db, "conversoes", log.conversaoId));
+    }
+    if (log.referralId) {
+      tx.delete(doc(db, "volunteers", log.referralId));
+    }
+  });
 }
 
 // ---------- ADMIN ----------
@@ -141,12 +166,13 @@ export function subscribeToAllMissions(callback) {
 }
 
 /** Cria uma missão nova no catálogo (uso do painel admin). Retorna o id. */
-export async function createMission({ title, description, xpReward, difficulty }) {
+export async function createMission({ title, description, xpReward, difficulty, registro }) {
   const ref = await addDoc(collection(db, "missions"), {
     title,
     description,
     xpReward: Number(xpReward),
     difficulty,
+    registro: registro || "none",
     imageUrl: "",
     createdAt: serverTimestamp(),
   });
@@ -247,13 +273,48 @@ export async function markDayCompleted(uid) {
 // Ninguém preenche dado de terceiro sem essa pessoa estar ali, digitando.
 
 /**
+ * Valida e formata um número de celular brasileiro.
+ * Regras: Apenas números, remove "55" inicial se tiver 13 dígitos, 
+ * exige 11 dígitos, impede números sequenciais/repetidos, e exige que inicie com 9 após o DDD.
+ */
+export function validateAndFormatPhone(rawPhone) {
+  let digits = (rawPhone || "").replace(/\D/g, "");
+  
+  if (digits.startsWith("55") && digits.length === 13) {
+    digits = digits.substring(2);
+  }
+  
+  if (digits.length !== 11) {
+    throw new Error("O número deve conter exatamente 11 dígitos (DDD + 9 + 8 números). Ex: 11999999999");
+  }
+  
+  if (/^(\d)\1+$/.test(digits)) {
+    throw new Error("Número inválido (não pode ter todos os números repetidos).");
+  }
+  
+  if (digits[2] !== "9") {
+    throw new Error("O número deve ser um celular (o terceiro dígito deve ser 9).");
+  }
+  
+  return digits;
+}
+
+/**
  * Cria o registro do voluntário que se cadastrou pelo link de convite.
  * Chamado sem o usuário estar logado (a página convite.html é pública).
  */
 export async function createVolunteerReferral(inviterUid, { name, whatsapp }) {
+  const phone = validateAndFormatPhone(whatsapp);
+
+  const q = query(collection(db, "volunteers"), where("whatsapp", "==", phone));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    throw new Error("Este número de WhatsApp já foi indicado.");
+  }
+
   await addDoc(collection(db, "volunteers"), {
     name: name.trim(),
-    whatsapp: (whatsapp || "").trim(),
+    whatsapp: phone,
     inviterUid,
     date: todayKey(),
     createdAt: serverTimestamp(),
@@ -409,6 +470,14 @@ export async function completeReferralMission(inviterUid, referralId, xpReward) 
 
 // ---------- CONVERSÕES ----------
 export async function createConversion(uid, missionId, xpReward, conversionData) {
+  const phone = validateAndFormatPhone(conversionData.whatsapp);
+
+  const q = query(collection(db, "conversoes"), where("whatsapp", "==", phone));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    throw new Error("Este número de WhatsApp já foi registrado em outra conversão.");
+  }
+
   const date = todayKey();
   const timestamp = Date.now();
   const completionId = `${uid}_${missionId}_${date}_${timestamp}`;
@@ -437,8 +506,8 @@ export async function createConversion(uid, missionId, xpReward, conversionData)
     
     tx.set(conversaoRef, {
       uid,
-      name: conversionData.name,
-      whatsapp: conversionData.whatsapp,
+      name: conversionData.name.trim(),
+      whatsapp: phone,
       date,
       createdAt: serverTimestamp(),
     });
@@ -460,12 +529,7 @@ export async function createConversion(uid, missionId, xpReward, conversionData)
   });
 }
 
-export async function getConversionsForUser(uid) {
-  const q = query(
-    collection(db, "conversoes"),
-    where("uid", "==", uid),
-    orderBy("createdAt", "desc")
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export async function getConversionById(id) {
+  const snap = await getDoc(doc(db, "conversoes", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }

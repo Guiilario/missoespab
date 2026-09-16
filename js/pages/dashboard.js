@@ -25,7 +25,7 @@ const PERMANENT_MISSION = {
   id: "convide-um-amigo",
   title: "Convide um amigo",
   description:
-    "Envie seu link de convite. A missão completa quando alguém preencher o formulário de inscrição como voluntário.",
+    "Envie seu link de convite ou adicione aqui.\nA missão é ganhar força e trazer pessoas que acreditam no futuro deputado federal PAB. #PRACIMA",
   xpReward: 200,
   difficulty: "easy",
 };
@@ -482,7 +482,7 @@ function renderMissionsList() {
         
         let status = completions[id] ? "completed" : "available";
         const titleLower = (mission.title || "").toLowerCase();
-        const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories") || titleLower.includes("convide") || titleLower.includes("amigo") || titleLower.includes("convite");
+        const isRepeatable = (mission.registro && mission.registro !== "none") || titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories") || titleLower.includes("convide") || titleLower.includes("amigo") || titleLower.includes("convite");
         if (isRepeatable) {
           status = "available"; // Nunca bloqueia visualmente se pode repetir
         }
@@ -605,7 +605,7 @@ missionsListEl.addEventListener("click", async (e) => {
   }
   
   // Adesivagem (modal com foto)
-  if (titleLower.includes("adesivagem")) {
+  if (mission.registro === "foto" || (!mission.registro && titleLower.includes("adesivagem"))) {
     // Abre o modal em vez de prompt()
     pendingAdesivagem = { missionId, mission };
     document.getElementById("modal-local").value = "";
@@ -620,7 +620,7 @@ missionsListEl.addEventListener("click", async (e) => {
   }
   
   // Conversão (modal)
-  if (titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert")) {
+  if (mission.registro === "whatsapp" || (!mission.registro && (titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert")))) {
     pendingConversao = { missionId, mission };
     document.getElementById("modal-conversao-nome").value = "";
     document.getElementById("modal-conversao-whatsapp").value = "";
@@ -632,7 +632,7 @@ missionsListEl.addEventListener("click", async (e) => {
   }
   
   // Postagem (modal)
-  if (titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories")) {
+  if (mission.registro === "link" || (!mission.registro && (titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories")))) {
     pendingPostagem = { missionId, mission };
     document.getElementById("modal-postagem-link").value = "";
     document.getElementById("modal-postagem-error").style.display = "none";
@@ -674,7 +674,7 @@ missionsListEl.addEventListener("click", async (e) => {
   renderMissionsList();
 
   try {
-    const isRepeatable = titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories");
+    const isRepeatable = (mission.registro && mission.registro !== "none") || titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories");
     if (isRepeatable) {
       await completeRepeatableMission(currentUser.uid, missionId, finalXpReward, proofData);
       if (titleLower.includes("panfletagem")) {
@@ -701,7 +701,7 @@ async function shareInviteLink(uid) {
   const link = new URL(`convite.html?u=${uid}`, window.location.href).href;
   const shareData = {
     title: "Convite para ser voluntário",
-    text: "Quero te convidar pra ser voluntário! Preencha seu cadastro por aqui:",
+    text: "Te convido para fazer parte do time de eleitores do PAB:",
     url: link,
   };
   try {

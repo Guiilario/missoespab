@@ -14,12 +14,14 @@ import {
   todayKey,
   getMissionLogsForUser,
   getVolunteerById,
-  getConversionsForUser
+  getConversionById,
+  revokeLog
 } from "../firestore.js";
 
 // Não renderiza a nav global — o admin tem sua própria UI
 
 let currentUser = null;
+let currentUserRole = "admin";
 let allMissionsCatalog = [];
 let allUsersCache = [];
 let assignmentUnsub = null;
@@ -70,22 +72,34 @@ async function checkIsAdminREST(uid, idToken) {
   const res = await fetch(url, {
     headers: { "Authorization": `Bearer ${idToken}` },
   });
-  if (res.status === 404) return false;       // documento não existe
-  if (res.status === 403) return false;        // sem permissão (não é admin)
-  if (!res.ok) return false;                   // qualquer outro erro
-  return true;                                 // documento existe → é admin
+  if (res.status === 404) return null;       // documento não existe
+  if (res.status === 403) return null;        // sem permissão (não é admin)
+  if (!res.ok) return null;                   // qualquer outro erro
+  
+  const data = await res.json();
+  const role = data.fields?.role?.stringValue || "admin";
+  return { role };
 }
 
 /**
  * Ativa o painel do admin (esconde login, mostra conteúdo).
  */
-function activateAdminPanel(user) {
+function activateAdminPanel(user, role = "admin") {
   if (adminInitialized) return;                // evita init duplicado
   adminInitialized = true;
   currentUser = user;
+  currentUserRole = role;
   loginScreen.style.display = "none";
   contentEl.hidden = false;
   document.getElementById("admin-session-email").textContent = user.email;
+  
+  if (role === "auditor") {
+    document.querySelector('[data-tab="tab-create-user"]').style.display = 'none';
+    document.querySelector('[data-tab="tab-add-mission"]').style.display = 'none';
+    document.querySelector('[data-tab="tab-active-missions"]').style.display = 'none';
+    document.querySelector('[data-tab="tab-users"]').click();
+  }
+  
   init();
 }
 
@@ -94,9 +108,9 @@ onAuthStateChanged(auth, async (user) => {
   if (!user || adminInitialized) return;
   try {
     const idToken = await user.getIdToken(true);
-    const isAdmin = await checkIsAdminREST(user.uid, idToken);
-    if (isAdmin) {
-      activateAdminPanel(user);
+    const adminData = await checkIsAdminREST(user.uid, idToken);
+    if (adminData) {
+      activateAdminPanel(user, adminData.role);
     } else {
       // Usuário logado mas não é admin — faz signOut silencioso
       await signOut(auth);
@@ -134,8 +148,8 @@ loginForm.addEventListener("submit", async (e) => {
     const idToken = signInData.idToken;
 
     // 2. Verifica se é admin via REST (idToken já está disponível)
-    const isAdmin = await checkIsAdminREST(uid, idToken);
-    if (!isAdmin) {
+    const adminData = await checkIsAdminREST(uid, idToken);
+    if (!adminData) {
       loginError.textContent = "Essa conta não tem permissão de administrador.";
       loginError.hidden = false;
       return;
@@ -143,7 +157,7 @@ loginForm.addEventListener("submit", async (e) => {
 
     // 3. Agora sim faz o login no SDK (para que os listeners do Firestore funcionem)
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    activateAdminPanel(cred.user);
+    activateAdminPanel(cred.user, adminData.role);
   } catch (err) {
     console.error("Erro no login do admin:", err);
     loginError.textContent = friendlyLoginError(err.code);
@@ -282,6 +296,8 @@ function renderUsersList(users) {
     return;
   }
 
+  const isAuditor = currentUserRole === "auditor";
+
   usersListEl.innerHTML = users
     .map((u) => {
       const disabled = !!u.disabled;
@@ -296,9 +312,9 @@ function renderUsersList(users) {
           </div>
           <div class="admin-user-actions">
             <button class="admin-btn-sm" data-view-uid="${u.id}" data-name="${escapeHtml(u.name)}" data-username="${escapeHtml(u.username)}" data-xp="${u.totalXp || 0}">Ver</button>
-            <button class="admin-btn-sm ${disabled ? "ok" : "danger"}" data-uid="${u.id}" data-disabled="${disabled}">
+            ${!isAuditor ? `<button class="admin-btn-sm ${disabled ? "ok" : "danger"}" data-uid="${u.id}" data-disabled="${disabled}">
               ${disabled ? "Reativar" : "Desativar"}
-            </button>
+            </button>` : ""}
           </div>
         </div>
       `;
@@ -374,7 +390,7 @@ async function openUserDetails(uid, user) {
 
   try {
     const logs = await getMissionLogsForUser(uid);
-    currentUserMissions = logs.filter(l => !l.referralId);
+    currentUserMissions = logs.filter(l => !l.referralId && !l.conversaoId);
     
     const referralLogs = logs.filter(l => !!l.referralId);
     currentUserReferrals = await Promise.all(referralLogs.map(async (log) => {
@@ -382,7 +398,11 @@ async function openUserDetails(uid, user) {
       return { ...log, volunteerData: vol };
     }));
     
-    currentUserConversions = await getConversionsForUser(uid);
+    const conversionLogs = logs.filter(l => !!l.conversaoId);
+    currentUserConversions = await Promise.all(conversionLogs.map(async (log) => {
+      const conv = await getConversionById(log.conversaoId);
+      return { ...log, volunteerData: conv }; // Reuse volunteerData format for UI
+    }));
     
     renderMissionsTab();
     renderReferralsTab();
@@ -413,6 +433,7 @@ function renderReferralsTab() {
     return;
   }
   container.innerHTML = currentUserReferrals.map((log) => buildLogHtml(log)).join("");
+  attachLogEvents(container);
 }
 
 function renderConversionsTab() {
@@ -421,24 +442,17 @@ function renderConversionsTab() {
     container.innerHTML = `<p class="admin-empty-msg">Nenhuma conversão registrada.</p>`;
     return;
   }
-  container.innerHTML = currentUserConversions.map((conv) => {
-    // Adapter para usar o buildLogHtml
-    const logAdapter = {
-      missionId: "Conversão de Voluntário", // fallback title
-      completedAt: conv.createdAt,
-      xpAwarded: 450,
-      volunteerData: {
-        name: conv.name,
-        whatsapp: conv.whatsapp
-      }
-    };
-    return buildLogHtml(logAdapter);
+  container.innerHTML = currentUserConversions.map((log) => {
+    // Override the title for Conversions
+    const displayLog = { ...log, _overrideTitle: "Conversão de Eleitor" };
+    return buildLogHtml(displayLog);
   }).join("");
+  attachLogEvents(container);
 }
 
 function buildLogHtml(log) {
   const mission = allMissionsCatalog.find((m) => m.id === log.missionId);
-  const title = mission ? mission.title : (log.referralId ? "Indicação de Voluntário" : log.missionId);
+  const title = log._overrideTitle || (mission ? mission.title : (log.referralId ? "Indicação de eleitor" : log.missionId));
   const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
   
   let proofHtml = "";
@@ -496,7 +510,10 @@ function buildLogHtml(log) {
           <strong style="display:block;margin-bottom:0.25rem;">${escapeHtml(title)}</strong>
           <span style="font-size:0.75rem;color:#666;">${dateStr}</span>
         </div>
-        <span style="font-size:0.875rem;font-weight:600;color:var(--mint);">+${log.xpAwarded} XP</span>
+        <div style="text-align:right;">
+          <span style="display:block;font-size:0.875rem;font-weight:600;color:var(--mint);margin-bottom:0.25rem;">+${log.xpAwarded} XP</span>
+          ${currentUserRole !== "auditor" ? `<button class="btn-delete-log admin-btn-sm danger" style="padding:0.2rem 0.4rem;font-size:0.65rem;" data-log='${escapeHtml(JSON.stringify({id: log.id, _collection: log._collection, uid: log.uid, xpAwarded: log.xpAwarded, conversaoId: log.conversaoId, referralId: log.referralId}))}'>Revogar</button>` : ""}
+        </div>
       </div>
       ${proofHtml}
     </div>
@@ -521,6 +538,40 @@ function attachLogEvents(container) {
       const mapId = e.target.dataset.mapId;
       const pts = panfletagemLogsMap.get(mapId) || [];
       openPanfletagemPopup(start, end, dist, pts);
+    });
+  });
+
+  const deleteBtns = container.querySelectorAll(".btn-delete-log");
+  deleteBtns.forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      if (!confirm("Tem certeza que deseja revogar esta ação e deduzir o XP do usuário? Isso apagará todos os dados associados a ela.")) return;
+      
+      const btnEl = e.target;
+      const logData = JSON.parse(btnEl.dataset.log || "{}");
+      if (!logData.id) return;
+      
+      btnEl.disabled = true;
+      btnEl.textContent = "Revogando...";
+      
+      try {
+        await revokeLog(logData);
+        // Remove from UI
+        btnEl.closest("div[style*='border-bottom']").remove();
+        // Update user xp in memory just for the modal info text
+        const userUid = logData.uid;
+        if (userUid) {
+          const matchUser = allUsersCache.find(u => u.id === userUid);
+          if (matchUser) {
+            matchUser.totalXp -= logData.xpAwarded;
+            document.getElementById("user-modal-info").innerHTML = `@${matchUser.username} &bull; ${matchUser.totalXp} XP total`;
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao revogar:", err);
+        alert("Não foi possível revogar: " + err.message);
+        btnEl.disabled = false;
+        btnEl.textContent = "Revogar";
+      }
     });
   });
 }
@@ -677,6 +728,7 @@ createMissionForm.addEventListener("submit", async (e) => {
       description: document.getElementById("mission-description").value.trim(),
       xpReward: document.getElementById("mission-xp").value,
       difficulty: document.getElementById("mission-difficulty").value,
+      registro: document.getElementById("mission-registro").value,
     });
     await assignMissionToDate(missionId, date);
     createMissionSuccess.textContent = "Missão criada e atribuída.";
