@@ -101,6 +101,7 @@ function activateAdminPanel(user, role = "admin") {
     document.querySelector('[data-tab="tab-create-user"]').style.display = 'none';
     document.querySelector('[data-tab="tab-add-mission"]').style.display = 'none';
     document.querySelector('[data-tab="tab-active-missions"]').style.display = 'none';
+    document.querySelector('[data-um-tab="checkins"]').style.display = 'none';
     document.querySelector('[data-tab="tab-users"]').click();
   }
   
