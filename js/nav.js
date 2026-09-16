@@ -5,6 +5,7 @@
 const ITEMS = [
   { page: "hoje", href: "index.html", label: "Hoje", icon: homeIcon() },
   { page: "ranking", href: "ranking.html", label: "Ranking", icon: trophyIcon() },
+  { page: "material", href: "https://guiilario.github.io/kitpab/", label: "Material", icon: materialIcon(), target: "_blank" },
   { page: "perfil", href: "perfil.html", label: "Perfil", icon: userIcon() },
 ];
 
@@ -23,7 +24,7 @@ export function renderNav(currentPage) {
             (item) => `
             <a href="${item.href}" class="nav-top-link ${
               item.page === currentPage ? "active" : ""
-            }">
+            }" ${item.target ? `target="${item.target}"` : ""}>
               ${item.icon}
               ${item.label}
             </a>`
@@ -40,7 +41,7 @@ export function renderNav(currentPage) {
           (item) => `
           <a href="${item.href}" class="nav-bottom-link ${
             item.page === currentPage ? "active" : ""
-          }">
+          }" ${item.target ? `target="${item.target}"` : ""}>
             ${item.icon}
             <span>${item.label}</span>
           </a>`
@@ -58,4 +59,7 @@ function trophyIcon() {
 }
 function userIcon() {
   return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+}
+function materialIcon() {
+  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
