@@ -67,9 +67,24 @@ async function autoCompletePanfletagem(missionId) {
   const mission = adminMissions[missionId];
   if (!mission || busyMissionId === missionId) return;
   busyMissionId = missionId;
-  renderMissionsList();
+
+  // Limpa o timer imediatamente da memória para não travar a UI em loop
+  const timerData = activeTimers[missionId] || { local: localStorage.getItem(`timer_local_${missionId}`) };
+  if (activeTimers[missionId]) {
+    clearInterval(activeTimers[missionId].intervalId);
+    if (activeTimers[missionId].gpsIntervalId) clearInterval(activeTimers[missionId].gpsIntervalId);
+    delete activeTimers[missionId];
+  }
 
   const pointsStr = localStorage.getItem(`timer_points_${missionId}`);
+  
+  // Limpa o storage localmente também
+  localStorage.removeItem(`timer_${missionId}`);
+  localStorage.removeItem(`timer_local_${missionId}`);
+  localStorage.removeItem(`timer_points_${missionId}`);
+
+  renderMissionsList();
+
   const points = pointsStr ? JSON.parse(pointsStr) : [];
   
   let totalDistance = 0;
@@ -80,10 +95,8 @@ async function autoCompletePanfletagem(missionId) {
   const bonusXp = Math.floor(totalDistance) * 10;
   const finalXpReward = (mission.xpReward || 0) + bonusXp;
   
-  const timerData = activeTimers[missionId] || { local: localStorage.getItem(`timer_local_${missionId}`) };
-  
   const proofData = { 
-    localInicio: timerData.local,
+    localInicio: timerData.local || "",
     distanceKm: totalDistance,
     bonusXp: bonusXp,
     trackPoints: points
@@ -94,20 +107,12 @@ async function autoCompletePanfletagem(missionId) {
     completionMessage += `\nDistância percorrida: ${totalDistance.toFixed(2)} km.\nBônus recebido: +${bonusXp} XP!`;
   }
 
+  // Atualização otimista na UI para liberar o usuário instantaneamente
+  completions[missionId] = true;
+  alert(completionMessage);
+
   try {
     await completeRepeatableMission(currentUser.uid, missionId, finalXpReward, proofData);
-    
-    if (activeTimers[missionId]) {
-      clearInterval(activeTimers[missionId].intervalId);
-      if (activeTimers[missionId].gpsIntervalId) clearInterval(activeTimers[missionId].gpsIntervalId);
-      delete activeTimers[missionId];
-    }
-    localStorage.removeItem(`timer_${missionId}`);
-    localStorage.removeItem(`timer_local_${missionId}`);
-    localStorage.removeItem(`timer_points_${missionId}`);
-    
-    completions[missionId] = true;
-    alert(completionMessage);
   } catch(e) {
     console.error("Erro ao auto-completar panfletagem", e);
   } finally {
