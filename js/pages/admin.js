@@ -880,23 +880,53 @@ btnExportCsv?.addEventListener("click", async () => {
     const date = getExportDate();
     const vols = await getVolunteersByDate(date);
     const convs = await getConversionsByDate(date);
+    const logs = await getMissionLogsByDate(date);
     
     const allContacts = [];
-    vols.forEach(v => allContacts.push({ name: v.name, wpp: v.whatsapp, type: "Indicação Convide um amigo", date: v.date }));
-    convs.forEach(c => allContacts.push({ name: c.name, wpp: c.whatsapp, type: "Conversão de Eleitor", date: c.date }));
+    
+    // Indicações e Conversões
+    vols.forEach(v => allContacts.push({ name: v.name, wpp: v.whatsapp, type: "Indicação Convide um amigo", date: v.date, detail: "", user: "" }));
+    convs.forEach(c => allContacts.push({ name: c.name, wpp: c.whatsapp, type: "Conversão de Eleitor", date: c.date, detail: "", user: "" }));
+    
+    // Outras Missões (Comprovantes)
+    for (const log of logs) {
+      if (!log.proofData && !log.referralId && !log.conversaoId) continue;
+      
+      const mission = allMissionsCatalog.find(m => m.id === log.missionId);
+      const title = log.conversaoId ? "Conversão de Eleitor" : (log.referralId ? "Indicação Convide um amigo" : (mission?.title || log.missionId));
+      const user = allUsersCache.find(u => u.id === log.uid) || { name: 'Desconhecido' };
+      const dateStr = log.completedAt?.toDate ? log.completedAt.toDate().toLocaleString("pt-BR") : log.date;
+      
+      let detail = "";
+      if (log.proofData) {
+        if (log.proofData.photoUrl) detail = log.proofData.photoUrl;
+        else if (log.proofData.postLink) detail = log.proofData.postLink;
+        else if (log.proofData.localInicio) detail = `Panfletagem: ${log.proofData.localInicio} (${(log.proofData.distanceKm||0).toFixed(2)} km)`;
+        else if (log.proofData.local) detail = `Local: ${log.proofData.local}`;
+      }
+      
+      // Se não for indicação pura, joga na lista (as indicações já pegamos acima, mas as fotos e panfletagens ficam aqui)
+      if (!log.referralId && !log.conversaoId) {
+        allContacts.push({ name: "-", wpp: "-", type: title, date: dateStr, detail: detail, user: user.name });
+      }
+    }
     
     if (allContacts.length === 0) {
-      showExportMsg("Nenhum contato encontrado para esta data.", true);
+      showExportMsg("Nenhum dado encontrado para esta data.", true);
       return;
     }
     
     // Header
-    let csv = "Nome;WhatsApp;Origem;Data\n";
+    let csv = "Nome Contato;WhatsApp;Missao / Origem;Detalhe (Link / Foto);Usuario Executor;Data\n";
     allContacts.forEach(c => {
-      // Formata CSV evitando quebrar por ponto e vírgula
       const name = (c.name || "").replace(/;/g, " ");
       const wpp = c.wpp || "";
-      csv += `${name};${wpp};${c.type};${c.date}\n`;
+      const type = (c.type || "").replace(/;/g, " ");
+      const detail = (c.detail || "").replace(/;/g, " ");
+      const user = (c.user || "").replace(/;/g, " ");
+      const dataStr = (c.date || "").replace(/;/g, " ");
+      
+      csv += `${name};${wpp};${type};${detail};${user};${dataStr}\n`;
     });
     
     // BOM para o Excel ler acentos

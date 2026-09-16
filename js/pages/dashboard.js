@@ -63,6 +63,60 @@ function recordGPSPoint(missionId) {
   }
 }
 
+async function autoCompletePanfletagem(missionId) {
+  const mission = adminMissions[missionId];
+  if (!mission || busyMissionId === missionId) return;
+  busyMissionId = missionId;
+  renderMissionsList();
+
+  const pointsStr = localStorage.getItem(`timer_points_${missionId}`);
+  const points = pointsStr ? JSON.parse(pointsStr) : [];
+  
+  let totalDistance = 0;
+  for (let i = 1; i < points.length; i++) {
+    totalDistance += calculateDistance(points[i-1].lat, points[i-1].lng, points[i].lat, points[i].lng);
+  }
+  
+  const bonusXp = Math.floor(totalDistance) * 10;
+  const finalXpReward = (mission.xpReward || 0) + bonusXp;
+  
+  const timerData = activeTimers[missionId] || { local: localStorage.getItem(`timer_local_${missionId}`) };
+  
+  const proofData = { 
+    localInicio: timerData.local,
+    distanceKm: totalDistance,
+    bonusXp: bonusXp,
+    trackPoints: points
+  };
+  
+  let completionMessage = "Panfletagem concluída automaticamente!";
+  if (bonusXp > 0) {
+    completionMessage += `\nDistância percorrida: ${totalDistance.toFixed(2)} km.\nBônus recebido: +${bonusXp} XP!`;
+  }
+
+  try {
+    await completeRepeatableMission(currentUser.uid, missionId, finalXpReward, proofData);
+    
+    if (activeTimers[missionId]) {
+      clearInterval(activeTimers[missionId].intervalId);
+      if (activeTimers[missionId].gpsIntervalId) clearInterval(activeTimers[missionId].gpsIntervalId);
+      delete activeTimers[missionId];
+    }
+    localStorage.removeItem(`timer_${missionId}`);
+    localStorage.removeItem(`timer_local_${missionId}`);
+    localStorage.removeItem(`timer_points_${missionId}`);
+    
+    completions[missionId] = true;
+    alert(completionMessage);
+  } catch(e) {
+    console.error("Erro ao auto-completar panfletagem", e);
+  } finally {
+    busyMissionId = null;
+    renderMissionsList();
+    maybeCompleteDay();
+  }
+}
+
 const missionsListEl = document.getElementById("missions-list");
 const dailyDotsEl = document.getElementById("daily-dots");
 const dailyProgressLabelEl = document.getElementById("daily-progress-label");
@@ -501,8 +555,12 @@ function renderMissionsList() {
                if (Date.now() >= end) {
                  clearInterval(intervalId);
                  if (timer.gpsIntervalId) clearInterval(timer.gpsIntervalId);
+                 if (!completions[id]) {
+                   autoCompletePanfletagem(id);
+                 }
+               } else {
+                 renderMissionsList();
                }
-               renderMissionsList();
              }, 1000);
              timer.intervalId = intervalId;
              timer.gpsIntervalId = setInterval(() => recordGPSPoint(id), 10000);
@@ -518,7 +576,10 @@ function renderMissionsList() {
             const s = Math.floor((remaining % 60000) / 1000);
             actionLabel = `Aguarde... (${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")})`;
           } else {
-            actionLabel = "Concluir (Tempo esgotado)";
+            actionLabel = "Finalizando...";
+            if (!completions[id] && busyMissionId !== id) {
+              autoCompletePanfletagem(id);
+            }
           }
         } else if (isRepeatable && completions[id]) {
           actionLabel = "Repetir missão";
@@ -587,8 +648,12 @@ missionsListEl.addEventListener("click", async (e) => {
         if (Date.now() >= endTime) {
           clearInterval(intervalId);
           clearInterval(activeTimers[missionId].gpsIntervalId);
+          if (!completions[missionId]) {
+            autoCompletePanfletagem(missionId);
+          }
+        } else {
+          renderMissionsList();
         }
-        renderMissionsList();
       }, 1000); // Atualiza a cada 1 segundo
       
       const gpsIntervalId = setInterval(() => recordGPSPoint(missionId), 10000); // a cada 10 s
@@ -646,27 +711,12 @@ missionsListEl.addEventListener("click", async (e) => {
   let finalXpReward = mission.xpReward;
   let completionMessage = "Missão concluída!";
 
+  // Panfletagem button click handling is now simplified or ignored 
+  // if it's running, because it auto-completes. But if they somehow click it (e.g. to repeat):
   if (titleLower.includes("panfletagem")) {
-    const pointsStr = localStorage.getItem(`timer_points_${missionId}`);
-    const points = pointsStr ? JSON.parse(pointsStr) : [];
-    
-    let totalDistance = 0;
-    for (let i = 1; i < points.length; i++) {
-      totalDistance += calculateDistance(points[i-1].lat, points[i-1].lng, points[i].lat, points[i].lng);
-    }
-    
-    const bonusXp = Math.floor(totalDistance) * 10;
-    finalXpReward += bonusXp;
-    
-    proofData = { 
-      localInicio: activeTimers[missionId].local,
-      distanceKm: totalDistance,
-      bonusXp: bonusXp,
-      trackPoints: points
-    };
-    
-    if (bonusXp > 0) {
-      completionMessage = `Missão concluída!\nDistância percorrida: ${totalDistance.toFixed(2)} km.\nBônus recebido: +${bonusXp} XP!`;
+    if (activeTimers[missionId]) {
+      // Já está rodando, não faz nada ao clicar no botão, ele auto-completa
+      return;
     }
   }
 
@@ -677,14 +727,6 @@ missionsListEl.addEventListener("click", async (e) => {
     const isRepeatable = (mission.registro && mission.registro !== "none") || titleLower.includes("adesivagem") || titleLower.includes("panfletagem") || titleLower.includes("conversão") || titleLower.includes("conversao") || titleLower.includes("convert") || titleLower.includes("postagem") || titleLower.includes("poste") || titleLower.includes("feed") || titleLower.includes("stories");
     if (isRepeatable) {
       await completeRepeatableMission(currentUser.uid, missionId, finalXpReward, proofData);
-      if (titleLower.includes("panfletagem")) {
-        clearInterval(activeTimers[missionId].intervalId);
-        if (activeTimers[missionId].gpsIntervalId) clearInterval(activeTimers[missionId].gpsIntervalId);
-        delete activeTimers[missionId];
-        localStorage.removeItem(`timer_${missionId}`);
-        localStorage.removeItem(`timer_local_${missionId}`);
-        localStorage.removeItem(`timer_points_${missionId}`);
-      }
     } else {
       await completeMission(currentUser.uid, missionId, finalXpReward);
     }
