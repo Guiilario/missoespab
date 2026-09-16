@@ -568,3 +568,24 @@ export async function getMissionLogsByDate(dateStr) {
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, _collection: "missionLogs", ...d.data() }));
 }
+
+// ---------- CHECK-INS ----------
+export async function saveCheckin(uid, lat, lng) {
+  const checkin = {
+    uid,
+    lat,
+    lng,
+    createdAt: serverTimestamp(),
+  };
+  await addDoc(collection(db, "checkins"), checkin);
+}
+
+export async function getCheckinsForUser(uid) {
+  const q = query(
+    collection(db, "checkins"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, _collection: "checkins", ...d.data() }));
+}

@@ -18,7 +18,8 @@ import {
   revokeLog,
   getVolunteersByDate,
   getConversionsByDate,
-  getMissionLogsByDate
+  getMissionLogsByDate,
+  getCheckinsForUser
 } from "../firestore.js";
 
 // Não renderiza a nav global — o admin tem sua própria UI
@@ -359,7 +360,8 @@ const umTabContents = document.querySelectorAll(".um-tab-content");
 let currentUserMissions = [];
 let currentUserPhotos = [];
 let currentUserReferrals = [];
-let currentUserConversions = [];
+let currentUserConversions = []; // Keep this if used somewhere, but we replace it with checkins
+let currentUserCheckins = [];
 
 let currentUmTab = "missions";
 
@@ -385,7 +387,7 @@ async function openUserDetails(uid, user) {
   
   document.getElementById("user-modal-logs-missions").innerHTML = `<p class="admin-empty-msg">Buscando histórico...</p>`;
   document.getElementById("user-modal-logs-referrals").innerHTML = `<p class="admin-empty-msg">Buscando indicações...</p>`;
-  document.getElementById("user-modal-logs-conversions").innerHTML = `<p class="admin-empty-msg">Buscando conversões...</p>`;
+  document.getElementById("user-modal-logs-checkins").innerHTML = `<p class="admin-empty-msg">Buscando check-ins...</p>`;
   
   // Reseta para primeira aba
   umTabs[0].click();
@@ -401,20 +403,16 @@ async function openUserDetails(uid, user) {
       return { ...log, volunteerData: vol };
     }));
     
-    const conversionLogs = logs.filter(l => !!l.conversaoId);
-    currentUserConversions = await Promise.all(conversionLogs.map(async (log) => {
-      const conv = await getConversionById(log.conversaoId);
-      return { ...log, volunteerData: conv }; // Reuse volunteerData format for UI
-    }));
+    currentUserCheckins = await getCheckinsForUser(uid);
     
     renderMissionsTab();
     renderReferralsTab();
-    renderConversionsTab();
+    renderCheckinsTab();
   } catch (err) {
     const errorMsg = `<p style="color:red;font-size:0.875rem;">Erro: ${err.message || err.toString()}</p>`;
     document.getElementById("user-modal-logs-missions").innerHTML = errorMsg;
     document.getElementById("user-modal-logs-referrals").innerHTML = errorMsg;
-    document.getElementById("user-modal-logs-conversions").innerHTML = errorMsg;
+    document.getElementById("user-modal-logs-checkins").innerHTML = errorMsg;
     console.error(err);
   }
 }
@@ -439,18 +437,26 @@ function renderReferralsTab() {
   attachLogEvents(container);
 }
 
-function renderConversionsTab() {
-  const container = document.getElementById("user-modal-logs-conversions");
-  if (!currentUserConversions.length) {
-    container.innerHTML = `<p class="admin-empty-msg">Nenhuma conversão registrada.</p>`;
+function renderCheckinsTab() {
+  const container = document.getElementById("user-modal-logs-checkins");
+  if (!currentUserCheckins.length) {
+    container.innerHTML = `<p class="admin-empty-msg">Nenhum check-in registrado.</p>`;
     return;
   }
-  container.innerHTML = currentUserConversions.map((log) => {
-    // Override the title for Conversions
-    const displayLog = { ...log, _overrideTitle: "Conversão de Eleitor" };
-    return buildLogHtml(displayLog);
+  container.innerHTML = currentUserCheckins.map((checkin) => {
+    const dateStr = checkin.createdAt?.toDate ? checkin.createdAt.toDate().toLocaleString("pt-BR") : "Data desconhecida";
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${checkin.lat},${checkin.lng}`;
+    return `
+      <div class="admin-log-card">
+        <h4 style="margin:0 0 0.25rem; font-size:1rem; color:var(--brand-700);">Check-in</h4>
+        <p style="margin:0 0 0.5rem; font-size:0.75rem; color:#666;">${dateStr}</p>
+        <div style="margin-top:0.5rem;padding:0.5rem;background:#f5f5f5;border-radius:0.5rem;font-size:0.875rem;">
+          <p style="margin:0 0 0.25rem;"><strong>Coordenadas:</strong> ${checkin.lat.toFixed(5)}, ${checkin.lng.toFixed(5)}</p>
+          <a href="${mapUrl}" target="_blank" style="display:inline-block;margin-top:0.5rem;color:var(--brand);font-weight:600;font-size:0.875rem;text-decoration:none;">Ver no Mapa &rarr;</a>
+        </div>
+      </div>
+    `;
   }).join("");
-  attachLogEvents(container);
 }
 
 function buildLogHtml(log) {
